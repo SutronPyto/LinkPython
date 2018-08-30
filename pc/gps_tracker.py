@@ -90,7 +90,6 @@ def gps_parse_lat_long(gps_status):
             if "Long W" in lat_long_line:
                 longitude = -longitude
 
-            print("lat: {:0.6f}, long: {:0.6f}, source: {}".format(latitude, longitude, clean_line))
             return latitude, longitude
 
         except ValueError:

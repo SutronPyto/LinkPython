@@ -7,7 +7,7 @@ import sdi12
 import log_test
 import event_based_logging
 import insat_test
-from projects import gps_tracker
+import gps_tracker
 
 
 def print_header():
