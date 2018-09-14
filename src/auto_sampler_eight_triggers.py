@@ -44,7 +44,13 @@ min_time_between_samples = 2 * 3600
     ..
     G32 Label
     G32 Value
+
+    For this application, please note that     
+    the trigger points must be such that they are increasing up to a peak point 
+    after which they are decreasing.  An example of such trigger points would be 
+    [1.1, 2.1, 3.1, 4.1, 3.2, 2.2, 1.2]
 """
+
 general_stub = {
     "Threshold 1": 1.0,
     "Threshold 2": 2.0,
@@ -53,7 +59,8 @@ general_stub = {
     "Threshold 5": 5.0,
     "Threshold 6": 4.6,
     "Threshold 7": 3.7,
-    "Threshold 8": 8.0,
+    "Threshold 8": 2.2,
+    "Threshold Reset": 0.5,
     "Rapid Up": 2.2,
     "Rapid Down": 1.1,
     "Rain 24h": 1.0,
@@ -85,12 +92,13 @@ def trigger_sampler_master():
 
     # trigger sampler by pulsing output for 2 seconds
     power_control('SW2', True)
-    utime.sleep(2.0)
+    if sutron_link:  # do not wait on PC (slows test down)
+        utime.sleep(2.0)
     power_control('SW2', False)
 
     # write a log entry
     reading = Reading(label="Triggered", time=time_scheduled(),
-                      etype='E', value=bottles_used,
+                      etype='E', value=bottles_used, units="btl",
                       right_digits=0, quality='G')
     reading.write_log()
 
@@ -107,16 +115,19 @@ def trigger_sampler():
     global time_last_sample
     global min_time_between_samples
 
+    # should we trigger?
     trigger = True
 
     if bottles_used >= bottles_capacity:
         trigger = False  # out of bottles
-    elif (utime.time() - time_last_sample) < min_time_between_samples:
-        trigger = False  # too soon since last trigger
-    elif is_being_tested():
-        trigger = False  # script is being tested
-    elif setup_read("Recording").upper() == "OFF":
-        trigger = False  # if recording is off, do not sample
+
+    elif sutron_link:  # running on embedded system - we don't want these checks on PC
+        if (utime.time() - time_last_sample) < min_time_between_samples:
+            trigger = False  # too soon since last trigger
+        elif is_being_tested():
+            trigger = False  # script is being tested
+        elif setup_read("Recording").upper() == "OFF":
+            trigger = False  # if recording is off, do not sample
 
     if trigger:
         trigger_sampler_master()  # Call routine that controls sampler.
@@ -241,7 +252,7 @@ def enough_water():
 
 
 @MEASUREMENT
-def stage_sampling(inval):
+def stage_sampling(stage):
     """ Routine is associated with the stage measurement.
     If the stage changes rapidly, we want to trigger the sampler
     """
@@ -273,81 +284,236 @@ def stage_sampling(inval):
                                   etype='E', value=stage_change, quality='G')
                 reading.write_log()
 
-    return inval  # Return the untouched stage reading
+    return stage  # Return the untouched stage reading
 
 
-"""Threshold based sampling is below"""
+"""
+Threshold based sampling is below
 
-# Multiple thresholds may be setup.
-# As each thresholds is crossed, the next one becomes relevant.
-# If losing count on reboot is of concern, this could be stored in the general purpose settings.
+The thresholds must  be such that they are increasing up to a peak point after which they are decreasing.
+An example of such thresholds: 
+[1.1, 2.1, 3.1, 4.1, 3.2, 2.2, 1.2]
+
+For the ascending points (points 1.1, 2.1, 3.1 and 4.1), the system will trigger the sampler 
+    if two consecutive turbidity readings exceed the threshold. 
+For the descending points (points 3.2, 2.2, 1.2), 
+    the system will trigger if the two values are below the threshold. 
+
+As each thresholds is crossed, the next one becomes relevant.  If the next threshold is 
+beyond the triggering value, it is automatically crossed too.
+
+For example (using the thresholds above), if the initial values were 3.3, the system would
+trigger the sampler and then move to threshold 4.1
+
+Once all the trigger points have been achieved, 
+the system will no longer trigger the sampler until the threshold reset 
+
+Threshold reset:
+Once the turbidity value reads below a user set ‘threshold reset’ value, 
+the system will reset the triggering program.  At this point, the sampler may be triggered 
+as if the program had just started.  The bottle counter is unaffected by this reset.
+
+"""
+
+# The currently relevant threshold
 threshold_index = 1
 
 # How many triggers are in the system
 # This could also be stored in the general purpose settings if it varies from station to station.
 threshold_count = 8
 
+# Is the system tracking ascending or descending?
+threshold_ascending = True
 
-def threshold_get_current():
-    """
-    Returns the value of the next trigger.
-    """
-    setting_name = "Threshold {}".format(threshold_index)
-    return general_read_value(setting_name)
+# Have we hit all the threshold points?  If so we cannot sample any more and are 'locked'.
+threshold_locked = False
+
+# What was the previous turbidity reading?  Negative value means we do not have a previous reading.
+previous_reading = -1.0
 
 
-def threshold_move():
-    """ Increments the value of the current trigger"""
+def threshold_reset():
+    """Resets the global threshold values"""
     global threshold_index
-    threshold_index += 1
-    if threshold_index > threshold_count:
-        threshold_index = 1
+    global threshold_ascending
+    global threshold_locked
+    global previous_reading
+
+    threshold_index = 1
+    threshold_ascending = True
+    threshold_locked = False
+    previous_reading = -1.0
+
+
+def threshold_get_value(indexi):
+    """
+        Returns the value of the threshold associated with the index.
+    """
+
+    global threshold_count
+
+    if not threshold_locked:
+        setting_name = "Threshold {}".format(indexi)
+        return general_read_value(setting_name)
+    elif indexi > threshold_count:
+        return 0.0  # use zero to mean no valid threshold
+    else:
+        return 0.0  # use zero to mean no valid threshold
+
+
+def threshold_check(current_turbidity):
+    """
+    Checks the current and previous turbidity readings against the threshold
+    Must be called by @MEASUREMENT function
+
+    :param current_turbidity: the current turbidity reading
+    :type current_turbidity: float
+    :return: True if the threshold has been crossed
+    :rtype: bool
+    """
+
+    global previous_reading
+    global threshold_index
+    global threshold_locked
+
+    # has the current threshold been crossed?
+    threshold_crossed = False
+
+    # have we reached all the turbidity points? if so we cannot trigger
+    if not threshold_locked:
+
+        # get the previous reading
+        if previous_reading > 0.0:  # negative value means we don't have a previous reading
+
+            # get the current threshold
+            threshold = threshold_get_value(threshold_index)
+
+            # verify the threshold is not zero and see if threshold has been crossed
+            if threshold > 0.0:
+                if threshold_ascending:  # if ascending, value must be greater than threshold
+                    if current_turbidity > threshold:
+                        if previous_reading > threshold:
+                            threshold_crossed = True
+                else:  # if descending, value must be less than threshold
+                    if current_turbidity < threshold:
+                        if previous_reading < threshold:
+                            threshold_crossed = True
+
+    return threshold_crossed
+
+
+def threshold_move_low(current_trubidity):
+    """
+    Moves to the next relevant turbidity threshold
+    It may skip thresholds if the current turbidity value is right
+    Changes the ascending/descending quality if appropriate
+
+    :param current_trubidity:
+    :type current_trubidity:
+    :return:
+    :rtype:
+    """
+
+    global threshold_index
+    global threshold_locked
+    global threshold_ascending
+
+    skip = False  # can we skip a threshold?
+
+    if not threshold_locked:
+        # is there a next threshold?  if not, go into locked mode (no more triggers)
+        next_threshold_index = threshold_index + 1
+        if next_threshold_index > threshold_count:
+            threshold_locked = True
+
+        else:
+            # can we switched from ascending to descending?
+            switched_to_descending = False
+            if threshold_ascending:
+                # compare current threshold value to the next to see if we went
+                # from ascending to descending
+
+                this_threshold = threshold_get_value(threshold_index)
+                next_threshold = threshold_get_value(next_threshold_index)
+
+                if next_threshold < this_threshold:
+                    threshold_ascending = False
+                    switched_to_descending = True
+
+            # now that we've decided on ascending/descending, increment to the next point
+            threshold_index += 1
+
+            # unless we switched to descending, see if we need to skip any threshold points
+            if not switched_to_descending:
+                if threshold_check(current_trubidity):
+                    # yes we can skip the next point
+                    skip = True
+
+    return skip
+
+
+def threshold_move(current_turbidity):
+    """
+    Moves to the next relevant turbidity threshold
+    It may skip thresholds if the current turbidity value is right
+    Changes the ascending/descending quality if appropriate
+
+    Wraps threshold_move_low, allowing us to skip multiple thresholds at once
+
+    :param current_turbidity: current turbidity value
+    :type current_turbidity: float
+    """
+
+    while not threshold_locked:
+        if not threshold_move_low(current_turbidity):
+            break  # we did not skip a turbidity point and we are done with loop
 
 
 @MEASUREMENT
-def threshold_sampler(inval):
+def threshold_sampler(turbidity):
     """This is traditionally hooked into the turbidity measurement.
     If the stage is high enough, check the two most recent readings
         of this measurement.
     If both cross the relevant threshold, the sampler may be triggered."""
 
+    global previous_reading
+
     sample_now = False
     if enough_water():  # we may not trigger unless the stage is high enough
-        threshold = threshold_get_current()
 
-        # verify the threshold is not zero and see if threshold has been crossed
-        if threshold > 0.0:
-            if inval > threshold:
+        # first check is for turbidity being low enough for a reset
+        reset_limit = general_read_value("Threshold Reset")
+        if (turbidity <  reset_limit) and (previous_reading < reset_limit):
+            threshold_reset()  # we have gone below the reset value
+            # Write a log entry indicating the reset
+            reading = Reading(label="ThreshReset", time=time_scheduled(),
+                              etype='E', value=turbidity, quality='G')
+            reading.write_log()
 
-                # find the previous reading of this measurement in the log
-                time_previous = time_scheduled() - 1  # anything older than current reading
-                meas_label = meas_find_label(index())
-
-                # find out this measurement's interval to compute time of previous
-                interval_text = setup_read("M{} Meas Interval".format(index()))
-                interval_sec = sl3_hms_to_seconds(interval_text)
-
-                try:
-                    previous_reading = Log(oldest=time_previous - interval_sec,
-                                           newest=time_previous,
-                                           match=meas_label).get_newest().value
-
-                except LogAccessError:
-                    previous_reading = 0.0
-
-                # if we find a previous reading, and it is also over the threshold, sample now
-                if previous_reading > threshold:
-                    sample_now = True
+        # if we did not reset, do the threshold check
+        elif threshold_check(turbidity):  # have we crossed the threshold?
+            sample_now = True
 
     if sample_now:
         if trigger_sampler():  # the sampler did trigger
-            threshold_move()  # the next threshold is now relevant
+            threshold_move(turbidity)  # the next threshold is now relevant
+
             # Write a log entry indicating why sampler was triggered.
             reading = Reading(label="ThreshTrig", time=time_scheduled(),
-                              etype='E', value=inval, quality='G')
+                              etype='E', value=turbidity, quality='G')
             reading.write_log()
 
-    return inval  # return the unmodified reading no matter whether we sampled
+    # update the previous reading
+    update = True
+
+    # on the embedded system, we only want to use scheduled readings
+    if sutron_link:
+        if is_scheduled():
+            previous_reading = turbidity
+    else: # to allow testing on PC, we need to allow any reading as last
+        previous_reading = turbidity
+
+    return turbidity  # return the unmodified reading no matter whether we sampled
 
 
 @TASK
@@ -371,4 +537,101 @@ def manual_sampler():
         reading = Reading(label="TrigManual", time=time_scheduled(),
                           etype='E', quality='G')
         reading.write_log()
+
+
+
+""" 
+Below is test code used to verify the correct workings of
+    the turbidity sampler trigger algorithm.
+This test is meant ot run on the PC only.
+Running the routine auto_eight_test will output logged data that
+    will indicate how the system responds to turbidity input
+"""
+
+# these are the values that we will feed into the turbidity tester
+turbidity_list = [1.0,
+                  1.5,
+                  1.0,
+                  1.6,
+                  1.6,
+                  1.8,
+                  1.8,
+                  2.5,
+                  1.8,
+                  2.6,
+                  1.8,
+                  2.7,
+                  2.7,
+                  2.8,
+                  4.2,
+                  4.2,
+                  4.3,
+                  4.4,
+                  3.2,
+                  3.2,
+                  5.5,
+                  5.9,
+                  5.8,
+                  0.0,
+                  5.9,
+                  3.0,
+                  3.0,
+                  100.0,
+                  123.123,
+                  2.0,
+                  2.0,
+                  0.1,
+                  0.2,
+                  1.6,
+                  1.6,
+                  1.8,
+                  1.8,
+                  2.5,
+                  1.8,
+                  2.6,
+                  2.6,
+                  2.6,
+                  2.6,
+                  2.6,
+                  2.6,
+                  1.0,
+                  1.0,
+                  1.0,
+                  3.8,
+                  3.9,
+                  4.4,
+                  4.7,
+                  ]
+
+
+def auto_eight_test():
+    """Test routine"""
+    if sutron_link:
+        raise Exception("These are tests meant to run on PC")
+
+    """write a log entry to separate from chaff"""
+    reading = Reading(label="START TURBIDITY",
+                      time=utime.time(),
+                      quality='G')
+    reading.write_log()
+
+    """Run the values in the table through the turbidty sampling algorithm"""
+    for turbidity in turbidity_list:
+        # log the turbidity reading first
+        reading = Reading(label="Turbidity",
+                          etype='M',
+                          value=turbidity,
+                          time=utime.time(),
+                          quality='G')
+        reading.write_log()
+
+        # next, throw the reading into the sampler script
+        threshold_sampler(turbidity)
+
+    """
+    Print the log out, starting with oldest
+    and limiting to a reasonable number.
+    This is meant for running on the PC"""
+    for reading in Log(count = 1000, pos = LOG_OLDEST):
+        print(reading)
 
