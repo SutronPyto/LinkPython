@@ -206,3 +206,36 @@ def rate_of_change_1meas_setup(inval):
 
     return result
 
+
+def measurement_previous():
+    """
+    Gets the previous measurement from the log using the measurement schedule
+    Must be called by an @MEASUREMENT function
+
+    Make sure to check the quality of the returned reading!
+
+    :return: previously logged measurement
+    :rtype: Reading
+    """
+
+    # find the previous reading of this measurement in the log
+    time_previous = time_scheduled() - 1  # anything older than current reading
+    meas_label = meas_find_label(index())
+
+    # find out this measurement's interval to compute time of previous
+    interval_text = setup_read("M{} Meas Interval".format(index()))
+    interval_sec = sl3_hms_to_seconds(interval_text)
+
+    try:
+        previous_reading = Log(
+            oldest=time_previous - interval_sec,
+            newest=time_previous,
+            match=meas_label).get_newest()
+
+        print("got one from log")
+        return previous_reading
+
+    except LogAccessError:
+        # could not find it.  create a bad reading
+        print("did not find one")
+        return Reading(time=time_previous, label=meas_label, value=-999.0, quality="B")
