@@ -181,7 +181,7 @@ def gps_keep_on_and_read_position():
     # Requires Satlink version 2916 or newer
     global version_needs_check
     if version_needs_check:
-        if ver()[2] < 2916:
+        if ver()[2] < 2974:
             raise AssertionError("Upgrade Satlink firmware!")
         else:
             version_needs_check = False
