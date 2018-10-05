@@ -27,7 +27,7 @@ def dga_format(txformat):
 
     # PC testing returns a False for scheduled reading and True when used on SL3 when scheduled.
     # This allows you to test code on PC and load it into SL3 without having to modify any code.
-    if more_info()[1] == True:
+    if is_scheduled() == True:
         tx_format = command_line("!tx{} format".format(index()), 50).strip()
         if not ("CSV" in tx_format):
             raise SetupError("Wrong tx{} format setup. Change format to CSV.".format(index()))

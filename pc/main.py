@@ -8,6 +8,7 @@ import log_test
 import event_based_logging
 import insat_test
 import gps_tracker
+import auto_sampler_eight_triggers
 
 
 def print_header():
@@ -270,6 +271,7 @@ def run_tests():
     test_prev_logged_value()
     insat_test.test_insat_all()
     gps_tracker.test_gps_read_position()
+    auto_sampler_eight_triggers.auto_eight_test()
 
     print("All tests complete.")
 
