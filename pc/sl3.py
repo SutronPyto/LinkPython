@@ -381,7 +381,7 @@ class Reading:
     label         ""          a name for the reading
     value         0.0         the value of the reading
     units         ""          the units of the reading (up to 3 characters)
-    quality       "B"         can be either 'G' for good or 'B' for bad
+    quality       "G"         can be either 'G' for good or 'B' for bad
     right_digits  0           the number of digits to the right of
                               the decimal point to display
     etype         "M"         represents the type of reading:
@@ -434,7 +434,7 @@ class Reading:
     units = ""
     """The units expressed as a string up to three bytes long"""
 
-    quality = "B"
+    quality = "G"
     """A single byte indicating the quailty of the reading, with B indicating a bad value,
     and G indicating a good value"""
 
@@ -449,7 +449,7 @@ class Reading:
        * 'D': a debug message
     """
 
-    def __init__(self, time=0, label="", value=0.0, units="", quality="B", right_digits=2, etype='M'):
+    def __init__(self, time=0, label="", value=0.0, units="", quality="G", right_digits=2, etype='M'):
         """
         A Reading can be initialized with another Reading or a tuple, or fields. 
         Here are some examples of differents ways a Reading can be constructed::
