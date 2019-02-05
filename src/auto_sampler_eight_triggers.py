@@ -31,48 +31,67 @@ min_time_between_samples = 2 * 3600
 #   be added to the 2 hour rainfall routine.
 #   Same goes for the 24 hour rainfall.
 
-
+""" General Purpose Variable Access
+    Please ensure SL3 firmware version 8.26 or newer
+    This script expects the following gp variables:
+    
+    Threshold 1       
+    Threshold 2       
+    Threshold 3       
+    Threshold 4       
+    Threshold 5       
+    Threshold 6       
+    Threshold 7       
+    Threshold 8       
+    Threshold Reset   
+    Rapid Up          
+    Rapid Down        
+    Rain 24h          
+    Rain 2h           
+    Stage Limit       
+  
+    The Threshold 1-8 values must be such that they are increasing up to a peak point 
+    after which they are decreasing.  E.g. [1.1, 2.1, 3.1, 4.1, 3.2, 2.2, 1.2]
 """
-    The following section is a stub for the upcoming addition of general purpose settings.
-    There are going to be multiple pairs of settings.  Each one will consist
-    of a label (ASCII string) and a value (IEEE32 float).
-    The settings will be named
-    G1 Label
-    G1 Value
-    G2 Label
-    G2 Value
-    ..
-    G32 Label
-    G32 Value
-
-    For this application, please note that     
-    the trigger points must be such that they are increasing up to a peak point 
-    after which they are decreasing.  An example of such trigger points would be 
-    [1.1, 2.1, 3.1, 4.1, 3.2, 2.2, 1.2]
-"""
-
-general_stub = {
-    "Threshold 1": 1.0,
-    "Threshold 2": 2.0,
-    "Threshold 3": 3.0,
-    "Threshold 4": 4.0,
-    "Threshold 5": 5.0,
-    "Threshold 6": 4.6,
-    "Threshold 7": 3.7,
-    "Threshold 8": 2.2,
-    "Threshold Reset": 0.5,
-    "Rapid Up": 2.2,
-    "Rapid Down": 1.1,
-    "Rain 24h": 1.0,
-    "Rain 2h": 0.2,
-    "Stage Limit": 2.5
-}
-general_entries = len(general_stub)  # how many entries?
+gp_count = 32  # how many general purpose variable sets there are
 
 
 def general_read_value(label):
-    """Returns the Value associated with the Label of the general purpose setting."""
-    return general_stub.get(label)
+    """
+    Returns the Value associated with the Label of the general purpose setting.
+
+    :param label: the user set label of the general purpose setting
+    :type label: str
+    :return: the value of the general purpose setting
+    :rtype: float
+    """
+    global gp_count
+    result = -999.9  # return this if no match is found
+
+    # run though all the the gp, looking for a label match
+    for gp_index in range(1, gp_count+1):
+        gp_label = "GP{} label".format(gp_index)  # e.g. "GP12 label"
+        if label.lower() == setup_read(gp_label).lower():
+            # we found a match.  return associated value
+            gp_value = "GP{} value".format(gp_index)  # e.g. "GP12 value"
+            result = float(setup_read(gp_value))
+            break
+
+    return result
+
+
+def update_status():
+    """ Adds diagnostic info to the script status """
+    global bottles_used
+    global bottles_capacity
+    global time_last_sample
+
+    print("Bottles used: {}".format(bottles_used))
+    print("Bottle capacity: {}".format(bottles_capacity))
+    if time_last_sample:
+        print("Last trigger: {}".format(ascii_time(time_last_sample)))
+    else:
+        print("Not triggered since bootup")
 
 
 """Sampler control section is below."""
@@ -284,6 +303,9 @@ def stage_sampling(stage):
                                   etype='E', value=stage_change, quality='G')
                 reading.write_log()
 
+    # update status
+    update_status()
+
     return stage  # Return the untouched stage reading
 
 
@@ -402,14 +424,14 @@ def threshold_check(current_turbidity):
     return threshold_crossed
 
 
-def threshold_move_low(current_trubidity):
+def threshold_move_low(current_turbidity):
     """
     Moves to the next relevant turbidity threshold
     It may skip thresholds if the current turbidity value is right
     Changes the ascending/descending quality if appropriate
 
-    :param current_trubidity:
-    :type current_trubidity:
+    :param current_turbidity:
+    :type current_turbidity:
     :return:
     :rtype:
     """
@@ -445,7 +467,7 @@ def threshold_move_low(current_trubidity):
 
             # unless we switched to descending, see if we need to skip any threshold points
             if not switched_to_descending:
-                if threshold_check(current_trubidity):
+                if threshold_check(current_turbidity):
                     # yes we can skip the next point
                     skip = True
 
@@ -503,9 +525,6 @@ def threshold_sampler(turbidity):
                               etype='E', value=turbidity, quality='G')
             reading.write_log()
 
-    # update the previous reading
-    update = True
-
     # on the embedded system, we only want to use scheduled readings
     if sutron_link:
         if is_scheduled():
@@ -539,12 +558,11 @@ def manual_sampler():
         reading.write_log()
 
 
-
 """ 
 Below is test code used to verify the correct workings of
     the turbidity sampler trigger algorithm.
 This test is meant ot run on the PC only.
-Running the routine auto_eight_test will output logged data that
+Running the routine auto_eight_test may output logged data that
     will indicate how the system responds to turbidity input
 """
 
@@ -604,7 +622,7 @@ turbidity_list = [1.0,
                   ]
 
 
-def auto_eight_test():
+def auto_eight_test(debug_out=False):
     """Test routine"""
     if sutron_link:
         raise Exception("These are tests meant to run on PC")
@@ -632,6 +650,7 @@ def auto_eight_test():
     Print the log out, starting with oldest
     and limiting to a reasonable number.
     This is meant for running on the PC"""
-    for reading in Log(count = 1000, pos = LOG_OLDEST):
-        print(reading)
+    if debug_out:
+        for reading in Log(count = 1000, pos = LOG_OLDEST):
+            print(reading)
 

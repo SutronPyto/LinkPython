@@ -345,6 +345,68 @@ Radios Installed: Environmental Satellite\r\n"
     if "ALARM 1 THRESHOLD" in com_upper:
         return "15.0"
 
+    # general purpose variable testing expects these values
+    if "GP1 LABEL" in com_upper:
+        if "=" in com_upper:
+            return ""
+        return "Threshold 1"
+    if "GP2 LABEL" in com_upper:
+        return "Threshold 2"
+    if "GP3 LABEL" in com_upper:
+        return "Threshold 3"
+    if "GP4 LABEL" in com_upper:
+        return "Threshold 4"
+    if "GP5 LABEL" in com_upper:
+        return "Threshold 5"
+    if "GP6 LABEL" in com_upper:
+        return "Threshold 6"
+    if "GP7 LABEL" in com_upper:
+        return "Threshold 7"
+    if "GP8 LABEL" in com_upper:
+        return "Threshold 8"
+    if "GP9 LABEL" in com_upper:
+        return "Threshold Reset"
+    if "GP10 LABEL" in com_upper:
+        return "Rapid Up"
+    if "GP11 LABEL" in com_upper:
+        return "Rapid Down"
+    if "GP12 LABEL" in com_upper:
+        return "Rain 24h"
+    if "GP13 LABEL" in com_upper:
+        return "Rain 2h"
+    if "GP14 LABEL" in com_upper:
+        return "Stage Limit"
+    if "GP1 VALUE" in com_upper:
+        if "=" in com_upper:
+            return ""
+        return "1.0"
+    if "GP2 VALUE" in com_upper:
+        return "2.0"
+    if "GP3 VALUE" in com_upper:
+        return "3.0"
+    if "GP4 VALUE" in com_upper:
+        return "4.0"
+    if "GP5 VALUE" in com_upper:
+        return "5.0"
+    if "GP6 VALUE" in com_upper:
+        return "4.6"
+    if "GP7 VALUE" in com_upper:
+        return "3.7"
+    if "GP8 VALUE" in com_upper:
+        return "2.2"
+    if "GP9 VALUE" in com_upper:
+        return "0.5"
+    if "GP10 VALUE" in com_upper:
+        return "2.2"
+    if "GP11 VALUE" in com_upper:
+        return "1.1"
+    if "GP12 VALUE" in com_upper:
+        return "1.0"
+    if "GP13 VALUE" in com_upper:
+        return "0.2"
+    if "GP14 VALUE" in com_upper:
+        return "2.5"
+
     return "hello\r\n"
 
 
