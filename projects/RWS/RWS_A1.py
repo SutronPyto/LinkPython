@@ -14,7 +14,7 @@ A second script task will average, format, and output the data.
 Measurements may be setup to log the results.
 
 Please note that serial ports are opened as script tasks are run.
-Turn off recording to close serial ports.
+Turn off recording to close serial port and end capture.
 """
 from sl3 import *
 import serial
@@ -71,11 +71,10 @@ def port_open():
     global port
     global port_opened
 
-    lock()  # thread safe access
-
     if not port_opened:
         if not is_being_tested():
-            port.port = "RS232"
+            port.port = "RS485"
+            port.rs485 = True
             port.baudrate = 9600
             port.parity = 'N'
             port.stopbits = 1
@@ -89,22 +88,17 @@ def port_open():
             port.open()
         port_opened = True
 
-    unlock()
 
-@TASK
 def port_close():
     # closes the serial port IF port_opened is True
     global port
     global port_opened
-
-    lock()  # thread safe access
 
     if port_opened:
         if not is_being_tested():
             port.close()
         port_opened = False
 
-    unlock()
 
 def update_results(ec, temp, uv):
     """
@@ -263,10 +257,6 @@ def capture_aml():
     keep_looping = True
     while keep_looping:
 
-        if not port_opened:
-            # port has been closed.  end loop
-            keep_looping = False
-
         # pick up data on the port
         if being_tested:
             one_byte = simulator_readchar()
@@ -283,3 +273,10 @@ def capture_aml():
                 keep_looping = False
             else:
                 port_quiet = True
+
+        # if recording is stopped, end loop
+        if not being_tested:
+            if setup_read("Recording").upper() == "OFF":
+                keep_looping = False
+
+    port_close()

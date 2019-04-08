@@ -22,7 +22,8 @@ def port_open():
 
     lock()  # thread safe access
     if not port_opened:
-        port.port = "RS232"
+        port.port = "RS485"
+        port.rs485 = True
         port.baudrate = 9600
         port.parity = 'N'
         port.stopbits = 1
@@ -90,7 +91,11 @@ def output_data_global():
 
     # output data on port
     data_out = aml_format_3_meas()
-    port.write(data_out)
+
+    lock()  # thread safe access
+    if port_opened:
+        port.write(data_out)
+    unlock()
 
     # print for diagnostics
     print(data_out)
