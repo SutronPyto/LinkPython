@@ -35,6 +35,7 @@ error9999 = 9999  # recorder error
 parsed_ec = error9999
 parsed_temp = error9999
 parsed_uv = error9999
+parsed_valid = False
 
 """ When we test the script and when we run on the PC, we do not listen for
 data from the AML sensor on the serial port.  Instead, we grab data from this
@@ -42,7 +43,7 @@ buffer.  The parser throws out the first line as it is most likely incomplete.
 There are a few lines of invalid data in there for error handling validation."""
 aml_simulated_output = """\
 .560  0000.000
- 22.502  20.561  0000.000
+ 22.492  20.561  0000.000
  22.503  20.566  0000.000
  22.501  20.565  0000.000
  22.507  20.572  0000.000
@@ -57,11 +58,16 @@ aml_simulated_output = """\
 19.108  20.026  0000.000
  19.109  20.024  0000.00019.048  19.876  0000.000
  19.050  0000.000
- 19.048  19.874  0000.000
- 19.045  19.869  0000.000
- 19.043  19.863  0000.000
- 19.040  19.861  0000.000
- 19.042  19.857  0000.000
+ 19.048  19.874  0001.000
+ 19.045  19.869  0001.000
+ 19.043  19.863  0001.000
+ 19.040  19.861  0001.000
+ 19.042  19.857  0001.000
+ 19.039  19.874  0001.000
+ 19.038  19.869  0001.000
+ 19.033  19.863  0001.000
+ 19.033  19.861  0001.000
+ 19.030  19.857  0001.000
 """
 aml_simulated_index = 0
 
@@ -100,52 +106,64 @@ def port_close():
         port_opened = False
 
 
-def update_results(ec, temp, uv):
+def update_results(ec, temp, uv, valid):
     """
     call once we have a set of samples from the sensor
-    copies sensor samples  to global variables
+    copies sensor samples to global variables in a thread safe fashion
+
+    :param ec, temp, uv: sensor values
+    :type ec, temp, uv: float
+    :param valid: True if values are valid
+    :type valid: bool
+    :return: None
     """
-    global parsed_ec, parsed_temp, parsed_uv
+    global parsed_ec, parsed_temp, parsed_uv, parsed_valid
 
     lock()  # thread safe access
     parsed_ec = ec
     parsed_temp = temp
     parsed_uv = uv
+    parsed_valid = valid
     unlock()
 
 
-""" result_ routines may be plugged into measurements so that Link can log sensor data"""
-@MEASUREMENT
-def result_ec(ignored_input):
-    global parsed_ec
+def read_results():
+    """ accesses processed sensor data in a thread-safe manner
+    by grabbing all results under a single lock, we ensure all results are from the same computation
+    :return: ec, temp, uv, valid
+    :rtype: float, float, float, bool
+    """
+    global parsed_ec, parsed_temp, parsed_uv, parsed_valid
 
     lock()  # thread safe access
-    result = parsed_ec
+    r_ec = parsed_ec
+    r_temp = parsed_temp
+    r_uv = parsed_uv
+    r_valid = parsed_valid
     unlock()
 
-    return result
+    return r_ec, r_temp, r_uv, r_valid
+
+
+@MEASUREMENT
+def result_ec(ignored_input):
+    """ result_ routines may be plugged into measurements so that Link can log sensor data"""
+    ev, temp, uv, valid = read_results()
+    return ev
 
 
 @MEASUREMENT
 def result_temp(ignored_input):
-    global parsed_temp
-
-    lock()  # thread safe access
-    result = parsed_temp
-    unlock()
-
-    return result
+    """ result_ routines may be plugged into measurements so that Link can log sensor data"""
+    ev, temp, uv, valid = read_results()
+    return temp
 
 
 @MEASUREMENT
 def result_uv(ignored_input):
-    global parsed_uv
-
-    lock()  # thread safe access
-    result = parsed_uv
-    unlock()
-
-    return result
+    """ result_ routines may be plugged into measurements so that Link can log sensor data"""
+    ev, temp, uv, valid = read_results()
+    return uv
 
 
 def simulator_readchar():
@@ -195,11 +213,12 @@ def parse_line(one_line):
         temp = error9991
         uv = error9991
 
-    update_results(ec, temp, uv)
+    update_results(ec, temp, uv, valid)
 
     # for test builds, print the sensor data as diagnostics
     if is_being_tested():
         print("ec: {:12.4f}, temp: {:12.4f}, uv: {:12.4f}, input: \"{}\"".format(ec, temp, uv, one_line))
+        print(format_output())
 
 
 def assemble_data(one_byte):
@@ -224,7 +243,7 @@ def assemble_data(one_byte):
         else:
             if len(assembled_line) < 5:
                 # not enough data
-                update_results(error9991, error9991, error9991)
+                update_results(error9991, error9991, error9991, False)
                 assembled_line = ""
             else:
                 # parse the line for data
@@ -248,7 +267,7 @@ def capture_aml():
     global port, port_quiet, assembled_drop_it
 
     # initialize
-    update_results(error9999, error9999, error9999)
+    update_results(error9999, error9999, error9999, False)
     assembled_drop_it = True
     being_tested = is_being_tested()  # optimization
 
@@ -280,3 +299,37 @@ def capture_aml():
                 keep_looping = False
 
     port_close()
+
+
+def format_output():
+    """
+    Format one line of sensor data into RWS format:
+        <LF>STDDDDSTDDDDSTDDDD<CR>
+            S= status (space is good, A is bad)
+            T= sign (+ or -)
+            D= Decimal value (digit)
+    e.g.
+        <LF> +0289 +0187 +0001<CR>
+    :return: formatted data
+    :rtype: str
+    """
+    # get the data we need to format
+    ev, temp, uv, valid = read_results()
+
+    # we need to scientifically round all values.
+    ev_f = int(ev + 0.5)
+    if valid:
+        temp_f = int(temp*10.0 + 0.5)  # temp needs to be multiplied by 10
+    else:
+        temp_f = int(temp + 0.5)  # do not multiply by 10 if invalid - it's already 9999
+    uv_f = int(uv + 0.5)
+    if valid:
+        valid_f = ' '
+    else:
+        valid_f = 'A'
+
+    result = "\n{0}{1:+05d}{0}{2:+05d}{0}{3:+05d}\r".format(valid_f, ev_f, temp_f, uv_f)
+    return result
+
+
+
