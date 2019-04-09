@@ -1,6 +1,6 @@
 # Python code for Sutron Satlink 3 and XLink 500 data loggers
 
-Sutron [Satlink 3](http://www.sutron.com/product/satlink3-loggertransmitter-sl3-1/) and [XLink 500](http://www.sutron.com/productsdisplay/66/95/) data loggers run Python scripts in order to provide advanced features that go beyond the standard setup.  Here are some examples:
+Sutron [Satlink 3](http://www.sutron.com/product/satlink3-loggertransmitter-sl3-1/) and [XLink 500](https://www.sutron.com/product/xlink100-500) data loggers run Python scripts in order to provide advanced features that go beyond the standard setup.  Here are some examples:
 * Water quality auto-sampler control
 * Custom transmission formats
 * Computing discharge and volume from a stage sensor
