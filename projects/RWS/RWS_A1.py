@@ -388,7 +388,10 @@ def format_output():
     uv_s = '+'
 
     # we need to scientifically round all values.
-    ev_f = int(ev + 0.5)
+    if valid:
+        ev_f = int(ev*100.0 + 0.5)  # convert Ec from mS/cm to mS/m
+    else:
+        ev_f = int(ev + 0.5)  # do not multiply if invalid - it's already 9999
     if ev_f < 0.0:
         ev_s = '-'
 
