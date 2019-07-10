@@ -1,58 +1,174 @@
 
 """
-Turn an SDI-12 fan on/off depending on alarm condition and delay time.
+Turn an SDI-12 fan on/off depending on recent sensor data.
 """
 
 import re
 import utime
 from sl3 import *
 
+status_fan_on = False  # the current status of the fan (true if on)
+status_fan_init = False  # did we ever issue a fan control command?
+
+# global radiation results are kept here
+# we need to know the maximum reading of the last 20 minutes
+# since, we are measuring once a minute, we will store last 20 readings
+rad_values = 20  # how many values we store
+rad_index = 0  # index into list, points to position we will write next
+rad_readings = [0.0] * rad_values  # this is the list of readings
+
+
+@TASK
+def radiation_clear():
+    """
+    Clears the history of radiation readings.
+    """
+    global rad_values
+    global rad_readings
+    global rad_index
+
+    for i in range(rad_values):
+        rad_readings[i] = 0.0
+    rad_index = 0
+
+
+def radiation_add_reading(radiation):
+    """
+    adds a value to the radiation readings history
+    overwrites oldest reading with the new one
+    """
+    global rad_values
+    global rad_readings
+    global rad_index
+
+    rad_readings[rad_index] = radiation
+    rad_index += 1
+    if rad_index >= rad_values:
+        rad_index = 0
+
+
+def radiation_max_reading():
+    """
+    Returns the maximum radiation reading from the list
+    """
+    global rad_readings
+    global rad_index
+
+    maximum = rad_readings[0]
+    for i in rad_readings:
+        if i > maximum:
+            maximum = i
+
+    return maximum
+
+
+def fan_control(turn_on):
+    """
+    This function sends an SDI-12 command to a device to control a fan.
+
+    :param turn_on: true to turn fan on, false to turn it off
+    :type turn_on: bool
+    :return: None
+    :rtype:
+    """
+    global status_fan_on
+    global status_fan_init
+
+    # if we are trying to change the status of the fan
+    # or if we have never issued a fan control command:
+    if (status_fan_on != turn_on) or (not status_fan_init):
+        if turn_on:
+            command = "0XLn"  # command to turn on fan
+        else:
+            command = "0XLs"  # command to turn off fan
+
+        sdi_send_command_get_reply(command, "Port1")
+        status_fan_on = turn_on
+        status_fan_init = True
+
+        # write a log entry for diagnostics
+        reading = Reading(label="FanControl", time=utime.time(),
+                          etype='E', value=float(turn_on), units="",
+                          right_digits=0, quality='G')
+        reading.write_log()
+
+    # else - fan is already in correct state - no action required
+
+
+@TASK
+def diagnostics():
+    """
+    Pints the current fan status and the history of radiation readings
+    """
+    global status_fan_on
+    global rad_values
+    global rad_readings
+    global rad_index
+
+    print("Fan state: {}, max rad: {}, time: {}".format(
+        status_fan_on, radiation_max_reading(), ascii_time(utime.localtime())))
+
+    # the code below prints the history which is a bit much for normal diagnostics
+    """
+    print("Rad history (not in order): ")
+    print(*rad_readings, sep=", ")
+    print("\n")
+    """
+
+
+@MEASUREMENT
+def radiation_for_fan(radiation):
+    """
+    This script should be connected to the global radiation measurement.
+    Routine will turn the fan on or off based on recent measurements.
+
+    It will keep a history of recent radation measurements.
+    It will also access the most recent wind speed average measurement.
+    Routine will turn fan on
+        If the maximum value of the global radiation of the last 20 minutes is greater than 400
+        AND the wind speed average is less than 2.1
+    Otherwise, it will turn fan off
+
+    :param radiation: current global radiation reading
+    :return: radiation (untouched)
+    """
+
+    # should we turn the fan on or off?
+    fan_should = False  # assume it should be off
+
+    # add the new reading to the list
+    radiation_add_reading(radiation)
+
+    # what is the max radiation from the list?
+    maximum = radiation_max_reading()
+
+    # what is the threshold? stored in GP1
+    radiation_threshold = float(setup_read("GP1 Value"))
+
+    # check against the limit
+    if maximum > radiation_threshold:
+        # radiation is high enough.  let's check wind
+
+        # get current wind reading and read the limit from GP setup
+        wind_now = measure("WAVG").value
+        wind_limit = float(setup_read("GP2 Value"))
+
+        if wind_now < wind_limit:  # we only turn on the fan if there is no wind
+            fan_should = True  # we need to turn on the fan
+
+    # take care of the fan
+    fan_control(fan_should)
+
+    # print diagnostics if desired
+    diagnostics()
+
+    # we must return the untouched radiation reading
+    # because it gets logged and transmitted
+    return radiation
+
 
 class Sdi12Error(Exception):
     pass
-
-
-last_alarm_off_time = 0
-status_fan_on = False
-
-@TASK
-def fan_on():
-    """
-    This function sends an SDI-12 command to a device to turn on a fan if the system is in alarm.
-
-    """
-    global status_fan_on
-    address = 0
-    desired_parameter = 0  # first parameter
-    command = "XLn"  # command to turn on fan
-    sdi_bus = "Port1"
-
-    if not status_fan_on:
-        sdi_collect_improved(address, desired_parameter, command, sdi_bus)
-        status_fan_on = True
-
-
-@TASK
-def fan_off():
-    """
-    This function sends an SDI-12 command to a device to turn off a fan if the system is out of alarm.
-
-    """
-    global status_fan_on, last_alarm_off_time
-    address = 0
-    desired_parameter = 0  # first parameter
-    command = "XLs"  # command to turn off fan
-    sdi_bus = "Port1"
-
-    last_alarm_off_time = utime.mktime(utime.localtime())  # initializing alarm off time when alarm is triggered
-
-    while status_fan_on:
-        if (utime.mktime(utime.localtime()) - last_alarm_off_time) > 1200:
-            # turn off fan if 20 minutes (1200 seconds) has elapsed since alarm went off.
-            sdi_collect_improved(address, desired_parameter, command, sdi_bus)
-            status_fan_on = False
-        else:
-            utime.sleep(10)
 
 
 def sdi_bus_valid(sdi_bus):
