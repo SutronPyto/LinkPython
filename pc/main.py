@@ -233,6 +233,20 @@ def test_rating_table():
     assert (rating_table(73.05) == -99.99)
 
 
+def test_interpolation_table_gp():
+    from rating_table_gp import table_interpol
+    # this reads the table from GP variables
+    # which are in sl3_sim.py:
+    # (1.0, 2.0), (3.0, 4.0), (5.0, 4.6)
+    # next pair is (3.7, 2.2) which gets rejected for being less than the previous alpha
+    # out of range readings should return the smallest or largest beta value
+    assert (table_interpol(-0.5) == 2.0)
+    assert (table_interpol(0.5) == 2.0)
+    assert (table_interpol(2.0) == 3.0)
+    assert (table_interpol(5.0) == 4.6)
+    assert (table_interpol(73.0) == 4.6)
+
+
 def test_prev_logged_value():
     # get a previously logged value that we expect to find in the log
     r = event_based_logging.prev_logged_value(4);
@@ -269,6 +283,7 @@ def run_tests():
     test_sl3_hms_to_seconds()
     log_test.test_log_a1()
     test_rating_table()
+    test_interpolation_table_gp()
     test_prev_logged_value()
     insat_test.test_insat_all()
     gps_tracker.test_gps_read_position()
