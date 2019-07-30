@@ -29,7 +29,7 @@ from sl3 import *
 import serial
 import re
 
-diagnostics_on = True  # set to True to have system add info to script status
+diagnostics_on = False  # set to True to have system add info to script status
 
 # serial port that the sensor is connected to
 port_sensor = serial.Serial()  # serial port object.  does not open it yet
@@ -56,6 +56,27 @@ proc_tm = error9999
 proc_uv = error9999
 proc_valid = False
 proc_samples = 0
+
+"""
+For additional measurements, if meas_valid_only_once is True,
+    a new sensor reading must be made for each time data is output on the serial port.
+    If it is not, the system will output error string A+9991
+If meas_valid_only_once is False, previous readings will be repeated as valid
+"""
+meas_valid_only_once = True
+
+""" 
+additional_meas structure holds information about any additional measurements
+that should be included in the formatted output.
+The list has an entry for each of the 32 measurements.  
+Each entry has 3 fields: [include, valid, reading]
+    include tells us whether the measurement should be included in the output
+    valid indicates whether the sensor reading is valid
+    reading is the sensor reading
+"""
+additional_meas = []
+additional_init = False  # tracks whether additional_meas has been initialized
+meas_count = 32  # number of measurements supported by system
 
 """ When we test the script and when we run on the PC, we do not listen for
 data from the AML sensor on the serial port.  Instead, we grab data from this
@@ -342,6 +363,9 @@ def capture_aml():
     being_tested = is_being_tested()  # optimization
     sensor_port_open()  # open the port
 
+    # initialize additional measurements table
+    initialize_additionals_table()
+
     keep_looping = True
     while keep_looping:
 
@@ -364,6 +388,42 @@ def capture_aml():
                 keep_looping = False
 
     sensor_port_close()
+
+
+def format_STDDDD(valid, reading):
+    """
+    Formats a sensor reading into the STDDDD format
+        S= status (space is good, A is bad)
+        T= sign (+ or -)
+        D= Decimal value (digit)
+
+    :param valid: is the sensor reading valid
+    :type valid: bool
+    :param reading: sensor reading
+    :type reading: float
+    :return: formatted output
+    :rtype: str
+    """
+
+    # status
+    if valid:
+        status = ' '
+    else:
+        status = 'A'
+
+    # Python does not put a sign in front of a zero.
+    # To get +0000, we manually need to do a sign
+    sign = '+'
+    if reading < 0.0:
+        sign = '-'
+
+    # we need to scientifically round all values.
+    dddd = int(reading + 0.5)
+
+    # format it up into the STDDDD
+    result = "{0}{1}{2:04d}".format(
+        status, sign, dddd)
+    return result
 
 
 def format_output():
@@ -411,15 +471,142 @@ def format_output():
     else:
         valid_f = 'A'
 
-    result = "\n{0}{1}{2:04d}{0}{3}{4:04d}{0}{5}{6:04d}\r".format(
-        valid_f, ev_s, ev_f, tm_s, tm_f, uv_s, uv_f)
+    # are there any additional sensor readings that need to be
+    # added to the stream?
+    additionals = format_additional_sensors()
+
+    result = "\n{0}{1}{2:04d}{0}{3}{4:04d}{0}{5}{6:04d}{7}\r".format(
+        valid_f, ev_s, ev_f, tm_s, tm_f, uv_s, uv_f, additionals)
     return result
+
+
+def initialize_additionals_table():
+    """ Clear and initialize the  table that holds additional measurements"""
+    global additional_meas
+    global additional_init
+    global meas_count
+
+    lock()  # thread safe access
+
+    additional_meas.clear()
+    for i in range(meas_count):
+        additional_meas.append([False, False, float(error9991)])
+    additional_init = True
+
+    unlock()
+
+
+def meas_include_x(meas_index, valid, reading):
+    """
+    Adds measurement to output stream by storing it the table.
+
+    :param meas_index: meas index
+    :type meas_index: int
+    :param valid: is the measurement valid?
+    :type valid: bool
+    :param reading: measurement reading
+    :type reading: float
+    :return: None
+    """
+    # make sure table has been initialized
+    if not additional_init:
+        initialize_additionals_table()
+
+    lock()  # thread safe access
+
+    # add provided information to the table
+    if valid:
+        additional_meas[meas_index] = [True, valid, reading]
+    else:
+        additional_meas[meas_index] = [True, valid, float(error9991)]
+
+    unlock()
+
+
+@MEASUREMENT
+def meas_include(sensor_reading):
+    """
+    Connect this to any additional measurements that you would
+    like included in the output data stream.
+    Note that ev, temp, and uv are already included
+
+    :param sensor_reading:
+    :type sensor_reading: float
+    :return:
+    :rtype:
+    """
+    # earlier versions do not have is_meas_valid() function
+    valid = True
+    if get_api_version() >= 0.2:
+        valid = is_meas_valid()
+
+    meas_include_x(index(), valid, sensor_reading)
+    return sensor_reading
+
+
+@MEASUREMENT
+def meas_include_x10(sensor_reading):
+    """ Just like meas_include, but multiplies reading by 10"""
+    meas_include(sensor_reading*10.0)
+    return sensor_reading
+
+
+@MEASUREMENT
+def meas_include_x100(sensor_reading):
+    """ Just like meas_include, but multiplies reading by 100"""
+    meas_include(sensor_reading*100.0)
+    return sensor_reading
+
+
+@MEASUREMENT
+def meas_include_x1000(sensor_reading):
+    """ Just like meas_include, but multiplies reading by 1000"""
+    meas_include(sensor_reading*1000.0)
+    return sensor_reading
+
+
+def format_additional_sensors():
+    """
+    Formats additional measurement readings into the output stream.
+    Any measurement that calls meas_include_x will be included.
+    Each included measurement will be formatted as STDDDD
+
+    :return: formatted data string in the STDDDDSTDDDD..STDDDD format
+    :rtype: str
+    """
+    global additional_meas
+    global additional_init
+    global meas_count
+    global meas_valid_only_once
+
+    # we return a formatted string.  if there is nothing to format, it should be blank
+    formatola = ""
+
+    # make sure table has been initialized
+    if not additional_init:
+        initialize_additionals_table()
+
+    lock()  # thread safe access
+
+    # run through the table looking for meas to include
+    for i in range(meas_count):
+        if additional_meas[i][0]:  # if true, we include this meas
+            formatola += format_STDDDD(additional_meas[i][1], additional_meas[i][2])
+
+            if meas_valid_only_once:
+                # Once we format a value, we make it invalid.  If we did not,
+                # we would repeat the same value again
+                additional_meas[i] = [True, False, float(error9991)]
+
+    unlock()
+
+    return formatola
 
 
 @TASK
 def process_and_output():
     """
-    Computes the result from the accummulated samples
+    Computes the result from the accumulated samples
     Formats the results
     Outputs the format on the serial port
     """
@@ -432,7 +619,7 @@ def process_and_output():
         output.flush()  # needed to make sure all the data is sent before closing the port.
 
     # diagnostics - these will interfere with performance and should be turned off
-    # addtionally, access to sensor_data and proc_samples is NOT properly thread safe
+    # additionally, access to sensor_data and proc_samples is NOT properly thread safe
     global diagnostics_on, sensor_data, proc_samples
     if diagnostics_on:
         lock()
