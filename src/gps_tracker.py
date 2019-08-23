@@ -201,3 +201,10 @@ def meas_latitude(inval):
 def meas_longitude(inval):
     """ Like meas_latitude, but for longitude"""
     return m_longitude
+
+
+@TXFORMAT
+def append_lat_long(standard):
+    """Appened m_latitude and m_longitude to transmission."""
+    return "{} latitude= {:.6f}, longitude= {:.6f}".format(standard, m_latitude, m_longitude)
+
