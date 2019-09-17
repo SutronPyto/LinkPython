@@ -99,7 +99,7 @@ def get_api_version():
     :return: API version
     :rtype: float
     """
-    return 0.1
+    return 0.2
 
 
 def index():
@@ -154,6 +154,18 @@ def is_clock_updated():
     :rtype: bool
     """
     return more_info()[5]
+
+
+def is_meas_valid():
+    """
+    Only usable by @MEASUREMENT scripts.
+    This routine tells you if the measurement is valid.  A measurement may be
+    invalid in cases of bad setup, errors in communication with digital sensors, or other reasons.
+
+    :return:  True if current measurement is valid
+    :rtype: bool
+    """
+    return more_info()[6]
 
 
 def ascii_time(time_t):
@@ -344,6 +356,23 @@ def meas_log_this():
     Please note this happens once script returns, not when this function is called.
     """
     return_info(1);
+
+
+def meas_make_valid():
+    """
+    Only usable by @MEASUREMENT scripts.
+    Call to make said measurement result valid.  Valid measurements are marked as good in the log.
+    """
+    return_info(4);
+
+
+def meas_make_invalid():
+    """
+    Only usable by @MEASUREMENT scripts.
+    Call to make said measurement result invalid.  An invalid result is marked as bad in the log,
+    and its value is overwritten with the setup "Log Error Value", which defaults to -999.9
+    """
+    return_info(5);
 
 
 class Serial_number:
@@ -1519,3 +1548,25 @@ def meas_find_index(meas_label):
             return index
 
     return 0  # no measurement with that label found
+
+
+def meas_as_reading(value):
+    """
+    Only usable by @MEASUREMENT scripts.
+    Returns current measurement as a Reading class
+
+    :param value: the current sensor reading as a float
+    :return: the current measurement as a Reading class
+    """
+    quality = 'G'
+    if not is_meas_valid():
+        quality = 'B'
+
+    return Reading(
+        time_scheduled(),
+        meas_find_label(index()),
+        value,
+        setup_read("M{} Units".format(index())),
+        quality,
+        int(setup_read("M{} Right Digits".format(index()))),
+        'M')

@@ -183,9 +183,12 @@ def more_info():
             For SL3 environmental satellite transmissions only, this value is true if the clock
             has been updated since the last transmission
 
+        The seventh value [6]:
+            For @MEASUREMENT only, this value is True if the measurement is valid
+
     :rtype: tuple
     """
-    return [1, False, utime.mktime(utime.localtime()), True, 4, True]
+    return [1, False, utime.mktime(utime.localtime()), True, 4, True, True]
 
 
 def return_info(action):

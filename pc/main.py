@@ -10,6 +10,7 @@ import insat_test
 import gps_tracker
 import auto_sampler_eight_triggers
 import general_purpose
+import evapo_transpiration
 
 
 def print_header():
@@ -289,6 +290,7 @@ def run_tests():
     gps_tracker.test_gps_read_position()
     auto_sampler_eight_triggers.auto_eight_test()
     general_purpose.gp_test()
+    evapo_transpiration.test_ET()
 
     print("All tests complete.")
 
