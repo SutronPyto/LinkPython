@@ -9,7 +9,9 @@ Two measurements are associated with scripts:
     * One reads the latitude from the global variable
     * The other reads the longitude from the global variable
     * The measurements need to be scheduled right after the script task
-A setup file is associated with this script!
+
+A Sat/XLink setup is associated with this module:
+`gps_tracker_setup.txt <gps_tracker_setup.txt>`_
 """
 
 import re

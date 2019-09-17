@@ -4,32 +4,34 @@
 This module is used to compute daily potential evapotranspiration (ET) based on
 American Society of Civil Engineers standardized reference evapotranspiration equation (January 2005)
 
-A Sat/XLink setup is associated with this module.
+A Sat/XLink setup is associated with this module:
+`evapotranspiration_setup.txt <evapotranspiration_setup.txt>`_
 
 The following sensor readings and associated units are used to compute ET:
+
 * Air temperature (AT).  Units may be
-** 'C' for Celsius (default) 
-** 'F' for 'Fahrenheit'
+    * 'C' for Celsius (default)
+    * 'F' for 'Fahrenheit'
 * Relative humidity (RH) expressed in percent.
 * Barometric pressure (BP).  Units:
-** 'mb' for millibar (default)
-** 'Hg' for inches of mercury
+    * 'mb' for millibar (default)
+    * 'Hg' for inches of mercury
 * Solar radiation (RI).  Units:
-** 'Wm2' for Watts per meters squared
-** 'Lyd' for Langleys per day (1 Lyd = 0.484583 Wm2)
-** 'Lyh' for Langleys per hour
-** 'Lym' for Langleys per minute
+    * 'Wm2' for Watts per meters squared
+    * 'Lyd' for Langleys per day (1 Lyd = 0.484583 Wm2)
+    * 'Lyh' for Langleys per hour
+    * 'Lym' for Langleys per minute
 * Wind speed (WS).  Units:
-** 'kph' for kilometers per hour,
-** 'mph' for miles per hour
-** 'mps' for meters per second
-** 'kn' for knots
-** 'fps' for feet per second
+    * 'kph' for kilometers per hour,
+    * 'mph' for miles per hour
+    * 'mps' for meters per second
+    * 'kn' for knots
+    * 'fps' for feet per second
 
 * Evapotranspiration (ET) is the result.  Units may be
-** 'cm' (default)
-** 'mm'
-** 'in'
+    * 'cm' (default)
+    * 'mm'
+    * 'in'
 
 Please change the sensor units in the setup to one of the units listed.  The system will use default units otherwise.
 
@@ -40,24 +42,7 @@ If recording is ON, counts get reset when a scheduled ET measurement is made.
 
 If recording is ON, and a live (forced) measurement of one of the 5 sensors takes place, it will NOT count towards ET.
 This allows making live readings without interfering with ET.
-"""
 
-""" Change the variable below to control the type of ET to compute. Choices:
-'ETo' for Standardized Reference Evapotranspiration, short grass
-'ETr' for Standardized Reference Evapotranspiration, tall alfalfa
-'ETWater' Same as ETo except uses albedo of 0.06, characteristic of open water
-"""
-output_ET = 'ETo'
-
-""" Wind Elevation in meters at which wind measurements are taken. """
-wind_elevation = 2.0
-
-"""Development and diagnostic setting"""
-print_all_samples = False  # prints every sample of every sensor
-print_results = True  # prints sensor averages and results of computation
-
-
-"""
 The ET calculation method used is based on:
 Me. Jensen, R. D. Burman, and R. G. Allen 1990.
 Evapotranspiration and Irrigation water Requiremtnts
@@ -68,6 +53,23 @@ The ASCE Standardized Reference Evapotranspiration Equation
 ASCE-EWRI Task Committee Report
 ASCE-EWRI Task Committee Report Appendixes A-C
 """
+
+output_ET = 'ETo'
+""" Change the variable above to control the type of ET to compute. Choices:
+'ETo' for Standardized Reference Evapotranspiration, short grass
+'ETr' for Standardized Reference Evapotranspiration, tall alfalfa
+'ETWater' Same as ETo except uses albedo of 0.06, characteristic of open water
+"""
+
+wind_elevation = 2.0
+""" Wind Elevation in meters at which wind measurements are taken. """
+
+
+# Development and diagnostic settings:
+print_all_samples = False  # prints every sample of every sensor
+print_results = True  # prints sensor averages and results of computation
+
+
 
 from sl3 import *
 
@@ -541,7 +543,7 @@ def test_ET():
     global print_results
 
     # run tests quietly.  let asserts notify on failure
-    print_results = True
+    print_results = False
 
     # set to units used in testing
     units_AT = 'C'

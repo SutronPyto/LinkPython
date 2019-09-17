@@ -8,6 +8,9 @@ Sampler is triggered on multiple, user-settable factors including
 * Rainfall
 
 Script also computes rainfall during the last 24 hours
+
+A Sat/XLink setup is associated with this module:
+`auto_samper_eight_triggers_setup.txt <auto_samper_eight_triggers_setup.txt>`_
 """
 
 from sl3 import *

@@ -5,7 +5,8 @@
 * If volume is insufficient, triggers sampler at 20:00:00 UTC
 * Sampler triggers no more than once per day.
 
-There is a setup file associated with this script!
+A Sat/XLink setup is associated with this module:
+`auto_sampler_volume_setup.txt <auto_sampler_volume_setup.txt>`_
 """
 
 from sl3 import *
