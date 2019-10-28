@@ -287,8 +287,8 @@ def c_command_line(command, buf_size=512):
 
     if "VER" in com_upper:
         return "\
-Sutron Satlink 3 Logger V2 Version 8.22 Build  10:10:10 11/11/2018 revision 2920\r\n\
-PIC     7.11\r\n\
+Sutron Satlink 3 Logger V2 Version 8.28 Build  9:38:08 08/27/2019 revision 3107\r\n\
+PIC     7.13\r\n\
 GPS     u-blox 1.00 (59842), 00070000\r\n\
 WiFi    1.00\r\n\
 SL3 S/N 19XY892, Micro 0, Tx 0\r\n\

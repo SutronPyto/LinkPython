@@ -7,6 +7,9 @@ American Society of Civil Engineers standardized reference evapotranspiration eq
 A Sat/XLink setup is associated with this module:
 `evapotranspiration_setup.txt <evapotranspiration_setup.txt>`_
 
+The provided setup makes hourly sensor readings.  The interval may be modified to suit your station.
+However, ET must be computed daily to be accurate.
+
 The following sensor readings and associated units are used to compute ET:
 
 * Air temperature (AT).  Units may be
@@ -18,24 +21,25 @@ The following sensor readings and associated units are used to compute ET:
     * 'Hg' for inches of mercury
 * Solar radiation (RI).  Units:
     * 'Wm2' for Watts per meters squared
-    * 'Lyd' for Langleys per day (1 Lyd = 0.484583 Wm2)
+    * 'Lyd' for Langleys per day (1 Lyd = 0.484583 Wm2) (default)
     * 'Lyh' for Langleys per hour
     * 'Lym' for Langleys per minute
 * Wind speed (WS).  Units:
-    * 'kph' for kilometers per hour,
+    * 'kph' for kilometers per hour (default)
     * 'mph' for miles per hour
     * 'mps' for meters per second
     * 'kn' for knots
     * 'fps' for feet per second
-
-* Evapotranspiration (ET) is the result.  Units may be
+* Daily Evapotranspiration (ET) is the result.  Units may be
     * 'cm' (default)
     * 'mm'
     * 'in'
 
 Please change the sensor units in the setup to one of the units listed.  The system will use default units otherwise.
 
-Please make sure the ET measurement is scheduled after all sensor readings are complete - e.g. set the measurement time to 5 min.
+Please make sure the ET measurement is scheduled after all sensor readings are complete,
+e.g. set the measurement time to 5 min.
+If that is not an option, uncomment utime.sleep at start of compute_ET routine.
 
 If recording is OFF, counts get reset every time ET is measured.  This allows for testing.
 If recording is ON, counts get reset when a scheduled ET measurement is made.
@@ -70,8 +74,8 @@ print_all_samples = False  # prints every sample of every sensor
 print_results = True  # prints sensor averages and results of computation
 
 
-
 from sl3 import *
+import utime
 
 
 # These variables store the units used.
@@ -127,6 +131,24 @@ def reset_ET():
     ws_cnt = 0
 
 
+# we need to check the version of Satlink firmware
+version_needs_check = True
+
+
+@TASK
+def version_check():
+    """
+    Ensures firmware supports this script
+    """
+    # Requires Satlink version 8.28r3097 or newer
+    global version_needs_check
+    if version_needs_check:
+        if ver()[2] < 3097:
+            raise AssertionError("Upgrade Satlink firmware to 8.28 r3097 or newer!")
+        else:
+            version_needs_check = False
+
+
 @MEASUREMENT
 def meas_AT(sensor_reading):
     """
@@ -145,7 +167,7 @@ def meas_AT(sensor_reading):
     # lest it interfere with the ET computation
     if not is_scheduled():
         if setup_read("Recording").upper() == "ON":
-            return sensor_reading  # bad sample
+            return sensor_reading
 
     lock()  # multi-thread protection
     if at_cnt == 0:
@@ -178,9 +200,12 @@ def meas_BP(sensor_reading):
     """
     Connect this to the barometric pressure  measurement
     The routine will compute average for use in ET
+    Additionally, Sat/XLink version check is made
     """
     global bp_cnt
     global bp_sum
+
+    version_check()
 
     if not is_meas_valid():
         return sensor_reading  # bad sample
@@ -189,7 +214,7 @@ def meas_BP(sensor_reading):
     # lest it interfere with the ET computation
     if not is_scheduled():
         if setup_read("Recording").upper() == "ON":
-            return sensor_reading  # bad sample
+            return sensor_reading
 
     lock()  # multi-thread protection
     if bp_cnt == 0:
@@ -231,7 +256,7 @@ def meas_RH(sensor_reading):
     # lest it interfere with the ET computation
     if not is_scheduled():
         if setup_read("Recording").upper() == "ON":
-            return sensor_reading  # bad sample
+            return sensor_reading
 
     lock()  # multi-thread protection
     if rh_cnt == 0:
@@ -268,7 +293,7 @@ def meas_RI(sensor_reading):
     # lest it interfere with the ET computation
     if not is_scheduled():
         if setup_read("Recording").upper() == "ON":
-            return sensor_reading  # bad sample
+            return sensor_reading
 
     lock()  # multi-thread protection
     if ri_cnt == 0:
@@ -306,7 +331,7 @@ def meas_WS(sensor_reading):
     # lest it interfere with the ET computation
     if not is_scheduled():
         if setup_read("Recording").upper() == "ON":
-            return sensor_reading  # bad sample
+            return sensor_reading
 
     lock()  # multi-thread protection
     if ws_cnt == 0:
@@ -336,6 +361,14 @@ def compute_ET(ignored):
     :return: ET
     :rtype: float
     """
+
+    """ 
+    # if it is not possible to schedule this reading after sensor data is collected,
+    # uncomment the sleep below
+    if is_scheduled():  # do not wait when testing or making forced readings
+        utime.sleep(60)  # wait 1 min for sensor data collection to complete
+    """
+
     fail = False
     lock()  # multi-thread protection
 
@@ -356,8 +389,11 @@ def compute_ET(ignored):
         f_ri_avg = ri_sum / float(ri_cnt)
 
         # Daily wind speed run.  One hour at 5 km/hr = 5km of wind run. The sum of all the hours is the daily wind run.
-        # Wind is now in km/day
-        f_ws_run = ws_sum
+        # We expect to have 24 readings.  If not, we will compensate as the equation needs a daily wind run.
+        if is_scheduled():
+            f_ws_run = (ws_sum/float(ws_cnt)) * 24.0
+        else:  # not scheduled - forced reading or system in test
+            f_ws_run = ws_sum
 
         message = "AT samples {}, avg {}, min {}, max {} {}\n" \
                   "RH samples {}, min {}, max {} %\n" \
