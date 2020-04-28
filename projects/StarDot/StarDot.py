@@ -10,7 +10,7 @@ from os import ismount, exists, mkdir
 # This script will capture still jpeg images from a StarDot camera using the RS232 port of the XL2 and the camera and
 # archive them to an SDHC card and also store them for transmission. Power to the camera is automatically controlled
 # by the XL2 using switched power. The images are stored in daily folders created under /sd/Sutron/StarDot and in
-# the /sd/Sutron/TX1 folder for transmission and automatic deletion. The way the images are named and stored can
+# the /sd/TX1 folder for transmission and automatic deletion. The way the images are named and stored can
 # be modified by editing the imageFolder, txFolder, and imageFileName global variables. You may also select whether
 # you want the power to the camera to always be on, whether to sync time to the camera, and whether to modify the
 #
@@ -56,10 +56,10 @@ transferCommand = "lsz -b /var/tmp/image.jpg\r"
 imageFolder = "/sd/Sutron/StarDot/{YYYY}{MM}{DD}"
 
 # where to store each snapshot
-imageFileName = "image_{YY}{MM}{DD}{hh}{mm}{ss}.jpg"
+imageFileName = "StarDot_{YY}{MM}{DD}{hh}{mm}{ss}.jpg"
 
 # where to store images for transmission
-txFolder = "/sd/Sutron/TX1"
+txFolder = "/sd/TX1"
 
 # setting to enable h/w handshaking on the serial port
 hwHandshake = True
@@ -69,6 +69,9 @@ timeSync = True
 
 # option to leave the camera on (except in case of an error) to permit capturing pictures more often
 leavePowerOn = False
+
+# how the camera is powered: None, "SW1", "SW2", "PROT12", "SDI1" or "SDI2"
+portPower = "SDI1"
 
 # update the image overlay the first time the script runs
 updateOverlay = True
@@ -87,18 +90,49 @@ NAK         = chr(0x15)  # CTRL-U
 CAN         = chr(0x18)  # CTRL-X
 CRC         = chr(0x43)  # "C"
 
-class LogAccessError(Exception):
-    pass
-
 class YmodemError(Exception):
     pass
 
 class SDCardNotMountedError(Exception):
     pass
 
+def TurnCamera(state):
+    """
+    Turn the camera on/off
+
+    :param state: True turns the camera on, False turns it off
+    :return: True if the camera is on
+    """
+    if not portPower:
+        return True
+    s = "On" if state else "Off"
+    if portPower == "SDI1":
+        cmd = "SDI PORT1 POWER "
+    elif portPower == "SDI2":
+        cmd = "SDI PORT2 POWER "
+    else:
+        cmd = "POWER {} ".format(portPower)
+    return s in command_line(cmd + s)
+
+def IsCameraOn():
+    """
+    Returns the state of power to the camera
+    :return: True if the camera is on
+    """
+    if not portPower:
+        return True
+    if portPower == "SDI1":
+        cmd = "SDI PORT1 POWER "
+    elif portPower == "SDI2":
+        cmd = "SDI PORT2 POWER "
+    else:
+        cmd = "POWER " + portPower
+    return "On" in command_line(cmd)
+
 def FormattedTimeStamp(timeStamp, dateTimeString):
     """
     Add time and data information to a string
+
     :param timeStamp: a time to use to format the string s
     :param dateTimeString: a string with key fields like {YYYY}{YY}{MM}{DD}{hh}{mm}{ss}
     :return: dateTimeString with the key fields replaced with the actual date/time information from timeStamp
@@ -116,6 +150,7 @@ def FormattedTimeStamp(timeStamp, dateTimeString):
 def GetOverlayText():
     """
     Get the text to be showed on the camera overlay
+
     :return: The default overlay setting with the station's name at the beginning
     """
     # customize the overlay displayed on the camera
@@ -251,6 +286,7 @@ def SetCameraTime(port):
 def UpdateOverlay(port, s):
     """
     Update the overlay displayed over the camera image
+
     :param port:        serial port
     :param s:           StarDot formatted string
     :return:            True if the overlay was updated
@@ -307,12 +343,12 @@ def TakePicture():
                     port.dtr = True
                     port.rts = True
                 # was the camera left powered up?
-                if power_sample("SW1"):
+                if IsCameraOn():
                     # encourage the camera to re-issue the login prompt by sending a <CR>
                     port.write("\r")
                     port.timeout = 3.0
                 else:
-                    power_control("SW1", True)
+                    TurnCamera(True)
                     port.timeout = 45.0
                 if not wait_for(port, " login: "):
                     raise YmodemError("Camera did not boot up and prompt for login")
@@ -368,7 +404,7 @@ def TakePicture():
                     raise YmodemError("Failed to capture picture")
         if ok and txFolder:
             if not exists(txFolder):
-                mkdir(txFolder)
+                command_line('FILE MKDIR "{}"'.format(txFolder))
             command_line('FILE COPY "{}" "{}"'.format(imagePath, txFolder + "/" + fileName))
 
     except Exception as e:
@@ -376,7 +412,7 @@ def TakePicture():
         raise e
     finally:
         if not leavePowerOn or not ok:
-            power_control("SW1", False)
+            TurnCamera(False)
         t3 = time()
         print("Total Pictures", totalPictures, "Failures", totalFails, "Retries", totalRetries, "No SD Card", totalNoSD)
         print("Startup Time (secs)", int(t2-t1))
