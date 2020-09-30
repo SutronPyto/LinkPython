@@ -1,11 +1,14 @@
 # Example:  Increase the measurement and transmission rates when the system is in alarm
 """
-Normal mode (not in alarm):
-    Measure and log sensor at a normal rate (5 min)
-    Transmit at a normal rate of 10 min
-If system goes into alarm (based on standard setup), go into fast mode:
-    measure and log sensor at a fast rate (30 sec)
-    transmit at a fast rate of 1 min
+Normal mode (not in alarm)
+
+* Measure and log sensor at a normal rate (5 min)
+* Transmit at a normal rate of 10 min
+
+If system goes into alarm (based on standard setup), go into fast mode
+
+* Measure and log sensor at a fast rate (30 sec)
+* Transmit at a fast rate of 1 min
 
 Setup details::
 

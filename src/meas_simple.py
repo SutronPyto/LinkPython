@@ -55,3 +55,15 @@ def dew_point(inval):
     dp = dp * 238.3 / (1 - dp)  # Formula for Dew point temperature
 
     return dp
+
+
+@MEASUREMENT
+def batt_load():
+    """
+    Reads battery voltage under load
+    Returns -999 if no such reading
+
+    :return: battery voltage under load.
+    :rtype: float
+    """
+    return float(command_line("!BATT LOAD"))

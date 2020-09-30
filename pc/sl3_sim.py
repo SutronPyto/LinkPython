@@ -410,6 +410,23 @@ Radios Installed: Environmental Satellite\r\n"
     if "GP14 VALUE" in com_upper:
         return "2.5"
 
+    if "STATUS CELL" in com_upper:
+        return """
+            Cell status: Online & Listening\r\n
+            Cell signal: 3/4 bars at 2019/11/08 14:40:10\r\n
+            SIM status: SIM OK\r\n
+            Last registered at 2019/11/08 07:23:38\r\n
+            Last online at 2019/11/08 07:23:38\r\n
+            Cell ID: 555555555555555\r\n
+            Phone Number: +15555555555\r\n
+            Cell IP: 127.1.1.0\r\n
+            Cell manuf: Telit\r\n
+            Cell model: LE910-SVG\r\n
+            Cell ver: 17.01.571\r\n
+            Cell tech: 4G LTE\r\n
+            Cell carrier: Verizon\r\n 
+            Sent/Received bytes: ~134.64 kB/93.44 kB total, ~386 Bytes/2 Bytes today\r\n
+            """
     return "hello\r\n"
 
 

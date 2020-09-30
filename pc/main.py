@@ -94,11 +94,11 @@ def test_sdi12():
 def test_dga():
     import dga
     assert (dga.dga_format("\r\n05/12/2017,15:18:00,Temp,26.00,,G\r\n05/12/2017,15:18:00,Batt,12.51,,G\r\n\r\n") ==
-            "SELFTIMED ON UNIT: Sutron Satlink 3 DATE: 05/12/2017 TIME: 15:18:00 Temp 26.00 G OK  Batt 12.51 G OK  ")
+            "SELFTIMED ON UNIT: Sutron Satlink 3 DATE: 05/12/2017 TIME: 15:18:00 Temp 26.00 G OK  Batt 12.51 G OK  SIGNAL -71 G OK  ")
     assert (dga.dga_format("\r\n05/12/2017,17:34:00,Temp,MISSING\r\n05/12/2017,15:18:00,Batt,12.51,,G\r\n\r\n") ==
-            "SELFTIMED ON UNIT: Sutron Satlink 3 DATE: 05/12/2017 TIME: 17:34:00 Temp MISSING OK  Batt 12.51 G OK  ")
+            "SELFTIMED ON UNIT: Sutron Satlink 3 DATE: 05/12/2017 TIME: 17:34:00 Temp MISSING OK  Batt 12.51 G OK  SIGNAL -71 G OK  ")
     assert (dga.dga_format(
-        "This is a test") == "SELFTIMED ON UNIT: Sutron Satlink 3 DATE: 05/12/2017 TIME: 15:18:00 Temp 26.00 G OK  Batt 12.51 G OK  ")
+        "This is a test") == "SELFTIMED ON UNIT: Sutron Satlink 3 DATE: 05/12/2017 TIME: 15:18:00 Temp 26.00 G OK  Batt 12.51 G OK  SIGNAL -71 G OK  ")
 
 
 def test_sim():

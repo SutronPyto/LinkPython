@@ -1,13 +1,25 @@
 # Example:  demonstrates SHEF reformatted to NRDRS transmission format using string comprehension
 """"
 This script takes in SHEF TX format and outputs NRDRS TX format. Measurements must be labeled in accordance with tx_sensor_order list.
-If Tx format is not already in SHEF, script will change setting to SHEF and recalculate tx string::
+If Tx format is not already in SHEF, script will change setting to SHEF and recalculate tx string
 
-SHEF format: ':RNIN 1 #0 12.34 :WSM 1 #0 -123 :WDD 1 #0 567 :ATF 1 #0 123 :FTF 1 #0 234 :RHP 1 #0 123 :BVV 1 #0 12.6 :FMP 1 #0 23.7 :WDDP 1 #0 123 :WSMP 1 #0 234 :SRW 1 #0 12345'
+SHEF format::
 
-NRDRS output: '12.34\r\n-123\r\n567\r\n123\r\n234\r\n123\r\n12.6\r\n23.7\r\n123\r\n234\r\n12345\r\n'
+ :RNIN 1 #0 12.34 :WSM 1 #0 -123 :WDD 1 #0 567 :ATF 1 #0 123 :FTF 1 #0 234 :RHP 1 #0 123 :BVV 1 #0 12.6 :FMP 1 #0 23.7 :WDDP 1 #0 123 :WSMP 1 #0 234 :SRW 1 #0 12345
 
-(Note that '\r\n' are carriage returns and new lines which are not printed)
+NRDRS output::
+
+ 12.34
+ -123
+ 567
+ 123
+ 234
+ 123
+ 12.6
+ 23.7
+ 123
+ 234
+ 12345
 """
 from sl3 import *
 

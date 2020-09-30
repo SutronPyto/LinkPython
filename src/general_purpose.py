@@ -1,8 +1,10 @@
 # Example:  provides functions to access General Purpose Variables (gp)
 
-""" General Purpose Variable Access
-    Please see the user manual for details on gp
-    Please ensure SL3 firmware version 8.26 or newer
+"""
+General Purpose Variable Access
+
+* Please see the user manual for details on GP
+* Please ensure SL3 firmware version 8.26 or newer
 """
 
 from sl3 import *

@@ -99,7 +99,7 @@ def get_api_version():
     :return: API version
     :rtype: float
     """
-    return 0.2
+    return 0.3
 
 
 def index():
@@ -1367,6 +1367,37 @@ def _output_test():
         output_control(port, False)
         if output_sample(port):
             raise AssertionError("Failed to turn off output ", port)
+
+
+digital_input_ports = ['DIN1', 'DIN2']
+
+
+def _digital_input_validate_port(port):
+    """
+    Tells whether the provided parameter is a valid digital input port
+
+    :param port: string indicating port
+    :return: Boolean indicating whether the port is valid
+    """
+    if port.upper() in digital_input_ports:
+        return True
+    else:
+        raise ValueError("Not a valid port: " + port)
+
+
+def digital_input_sample(port):
+    """
+    Samples one of the digital input lines.  Requires API ver 0.3
+
+    :param port: which input to sample, string.  options are 'DIN1', 'DIN2'
+    :return: Boolean indicating whether the digital input is active
+    """
+
+    if _digital_input_validate_port(port):
+        if "NOT ACTIVE" in command_line(port.upper()).upper():
+            return False
+        else:
+            return True
 
 
 def sgn(number):

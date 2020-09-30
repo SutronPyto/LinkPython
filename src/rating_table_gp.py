@@ -1,27 +1,28 @@
-# Example:  demonstrates an interpolation table which uses an 'alpha' value
-# to compute  a 'beta' value.  For discharge computations, this would be a
-# rating table where 'alpha' is stage and 'beta' is discharge
-# General Purpose (GP) variables are used to store the table
-# the 'table' ends when the next GP variable value is lower than the previous
-
-from sl3 import *
+# Example:  demonstrates an interpolation table  using general purpose variables
 
 """
+The interpolation table uses an 'alpha' value to compute  a 'beta' value.
+
+For discharge computations, this would be a rating table where 'alpha' is stage and 'beta' is discharge.
+
+General Purpose (GP) variables are used to store the table.
+The table ends when the next GP variable value is lower than the previous
+
 The interpolation table is stored in GP Value variables.
 'GP1 Value' and 'GP2 Value' hold the alpha and beta values for the first table entry.
 (GP3, GP4) have the second (alpha, beta) table entry.
-With 32 GP variables available, we can hold up to 16 (alpha, beta) pairs.
-table = ((GP1, GP2),
-         (GP3, GP4),
-         (GP5, GP6),
-         (GP7, GP8),
-         (GP9, GP10),
-         (GP11, GP12),
-         (GP13, GP14),
-         ..
-         (GP29, GP30),
-         (GP31, GP32))
-         
+With 32 GP variables available, we can hold up to 16 (alpha, beta) pairs::
+ table = ((GP1, GP2),
+          (GP3, GP4),
+          (GP5, GP6),
+          (GP7, GP8),
+          (GP9, GP10),
+          (GP11, GP12),
+          (GP13, GP14),
+          ..
+          (GP29, GP30),
+          (GP31, GP32))
+
 Please note that each subsequent alpha value MUST be greater than the previous.
 If it is not, the system will stop loading the table. 
 Keep the unused parts of the GP Variables at 0.0.
@@ -30,6 +31,8 @@ To improve performance, we will load the table from setup whenever
 recording is started.  This means that the station needs either a reboot,
 or to be stopped and started after changing the GP variables.  
 """
+
+from sl3 import *
 
 # we will load the rating table from GP setup into this variable
 # table is said to hold (alpha, beta) pairs
