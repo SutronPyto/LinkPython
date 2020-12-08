@@ -26,7 +26,21 @@ def clear_display(port, lines):
         port.write("\r\n")
 
 
-def iee_display_one_meas(port, meas_to_display, heading, display_meas_time):
+def iee_display_time(port, time_to_show):
+    """
+    Displays provided time on the display
+    :param port: serial port to use
+    :type port: Serial
+    :param time_to_show: time is represented in seconds since 1970 as returned by utime.time()
+    :return: None
+    """
+    display_me = ascii_time_hms(time_to_show)
+    display_me += "\r\n"  # add new line
+    print(display_me)  # for diagnostics via script status
+    port.write(display_me)  # output to display
+
+
+def iee_display_one_meas(port, meas_to_display, heading):
     """ Writes provided measurement to one line of the display
         Uses units and number of right digits that are setup in the measurement
         Optionally writes time of measurement on line two
@@ -36,8 +50,6 @@ def iee_display_one_meas(port, meas_to_display, heading, display_meas_time):
     :type meas_to_display: either measurement index (e.g. 1), or meas label (e.g. "PL1")
     :param heading: what text to show before the measurement
     :type heading: str
-    :param display_meas_time: should the time of the measurement be displayed on the second line?
-    :type display_meas_time: Bool
     :return: None
     """
 
@@ -47,17 +59,10 @@ def iee_display_one_meas(port, meas_to_display, heading, display_meas_time):
                                                meas_to_display.value,
                                                meas_to_display.right_digits,
                                                meas_to_display.units)
-    else:  # bad quality.  show error
-        display_me = "{} ERROR\r\n".format(heading)
+    else:  # bad quality.  show we do not have a reading
+        display_me = "NA\r\n"
     print(display_me)  # for diagnostics via script status
     port.write(display_me)  # output to display
-
-    # if caller asked, output time on a new line
-    if display_meas_time:
-        display_me = ascii_time_hms(meas_to_display.time)
-        display_me += "\r\n"  # add new line
-        print(display_me)  # for diagnostics via script status
-        port.write(display_me)  # output to display
 
 
 @TASK
@@ -83,52 +88,13 @@ def iee_display_two_line():
         # display the reading
         iee_display_one_meas(port,
                              head_reading,  # this is the measurement to show
-                             "HEAD",  # print this before meas value
-                             False)  # do not display meas time
+                             "HEAD");
 
         # get last tail reading
         tail_reading = measure('TL2', READING_LAST)
 
         # display the reading
-        iee_display_one_meas(port, tail_reading, "TAIL", False)
-
-        # make sure all the data is sent before closing the port
-        port.flush()
-
-
-@TASK
-def iee_display_four_line_two_meas():
-    """Sends data to the RS232 display
-    Uses a 4 line display
-    Uses measurements M1 and M2 (labels are not relevant)
-    Prints measurement label, value, units on line one
-    Prints measurement timestamp on line two
-    Output depends on setup, but if M1 were labeled HEAD and M2 were TAIL:
-    HEAD 1.234FT
-    12:15:00
-    TAIL 2.345FT
-    12:15:00
-    """
-
-    with serial.Serial("RS232", 9600) as port:
-
-        # start by clearing display:
-        clear_display(port, 4)  # 4 means 4 line display
-
-        # get last reading for measurement index M1
-        reading = measure(1, READING_LAST)
-
-        # display the reading
-        iee_display_one_meas(port,
-                             reading,
-                             reading.label,  # show meas label before value
-                             True)  # True means display meas time
-
-        # get last reading for measurement index M2
-        reading = measure(2, READING_LAST)
-
-        # display the reading
-        iee_display_one_meas(port, reading, reading.label,True)
+        iee_display_one_meas(port, tail_reading, "TAIL")
 
         # make sure all the data is sent before closing the port
         port.flush()
@@ -156,7 +122,87 @@ def iee_display_four_meas():
             reading = measure(meas_index, READING_LAST)
 
             # display the reading
-            iee_display_one_meas(port, reading, reading.label, False)
+            iee_display_one_meas(port, reading, reading.label)
+
+        # make sure all the data is sent before closing the port
+        port.flush()
+
+
+@TASK
+def iee_display_time_3_meas():
+    """Sends data to the RS232 display
+    Shows time on line one,
+    M1, M2, M3 on the following lines
+    Output depends on setup, but here is an example:
+    12:15:00
+    BV 12.5V
+    AT 21.9C
+    RAIN 0.02in
+    """
+
+    with serial.Serial("RS232", 9600) as port:
+
+        # start by clearing display:
+        clear_display(port, 4)  # 4 means 4 line display
+
+        # get M1
+        reading = measure(1, READING_LAST)
+
+        # show time of M1 on line 1
+        iee_display_time(port, reading.time)
+
+        # show M1
+        iee_display_one_meas(port, reading, reading.label)
+
+        # get and show M2
+        reading = measure(2, READING_LAST)
+        iee_display_one_meas(port, reading, reading.label)
+
+        # get and show M3
+        reading = measure(3, READING_LAST)
+        iee_display_one_meas(port, reading, reading.label)
+
+        # make sure all the data is sent before closing the port
+        port.flush()
+
+
+@TASK
+def iee_display_vorne_2():
+    """Sends data to the RS232 display
+    M1 and M2 are displayed on one line
+    HEAD 1.234FT TAIL 2.345FT
+    """
+
+    with serial.Serial("RS232", 9600) as port:
+
+        # get M1
+        reading = measure(1, READING_LAST)
+
+        # format the measurement into one line
+        if reading.quality == 'G':  # good quality reading format the value
+            display_m1 = "{} {:.{}f}{}".format(reading.label,
+                                               reading.value,
+                                               reading.right_digits,
+                                               reading.units)
+        else:  # bad quality.  show we do not have a reading
+            display_m1 = "NA"
+
+        # get M2
+        reading = measure(2, READING_LAST)
+
+        # format the measurement into one line
+        if reading.quality == 'G':  # good quality reading format the value
+            display_m2 = "{} {:.{}f}{}".format(reading.label,
+                                               reading.value,
+                                               reading.right_digits,
+                                               reading.units)
+        else:  # bad quality.  show we do not have a reading
+            display_m2 = "NA"
+
+        display_me = display_m1 + " " + display_m2 + "\r\n"
+
+        print(display_me)  # for diagnostics via script status
+        port.write(display_me)  # output to display
 
         # make sure all the data is sent before closing the port
         port.flush()
