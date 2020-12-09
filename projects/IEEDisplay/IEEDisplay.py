@@ -206,3 +206,44 @@ def iee_display_vorne_2():
 
         # make sure all the data is sent before closing the port
         port.flush()
+
+
+@TASK
+def iee_display_vorne_2B():
+    """Sends data to the RS232 display
+    M3 and M4 are displayed on one line
+    no units are shown
+    HEAD 1.234 TAIL 2.345
+    """
+
+    with serial.Serial("RS232", 9600) as port:
+
+        # get M3
+        reading = measure(3, READING_LAST)
+
+        # format the measurement into one line
+        if reading.quality == 'G':  # good quality reading format the value
+            display_1 = "{} {:.{}f}".format(reading.label,
+                                            reading.value,
+                                            reading.right_digits)
+        else:  # bad quality.  show we do not have a reading
+            display_1 = "NA"
+
+        # get M4
+        reading = measure(4, READING_LAST)
+
+        # format the measurement into one line
+        if reading.quality == 'G':  # good quality reading format the value
+            display_2 = "{} {:.{}f}".format(reading.label,
+                                            reading.value,
+                                            reading.right_digits)
+        else:  # bad quality.  show we do not have a reading
+            display_2 = "NA"
+
+        display_me = display_1 + " " + display_2 + "\r\n"
+
+        print(display_me)  # for diagnostics via script status
+        port.write(display_me)  # output to display
+
+        # make sure all the data is sent before closing the port
+        port.flush()
