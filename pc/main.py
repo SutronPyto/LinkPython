@@ -11,6 +11,7 @@ import gps_tracker
 import auto_sampler_eight_triggers
 import general_purpose
 import evapo_transpiration
+import median
 
 
 def print_header():
@@ -291,6 +292,7 @@ def run_tests():
     auto_sampler_eight_triggers.auto_eight_test()
     general_purpose.gp_test()
     evapo_transpiration.test_ET()
+    median.test_median()
 
     print("All tests complete.")
 
