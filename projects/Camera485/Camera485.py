@@ -4,7 +4,7 @@ from time import sleep, time, localtime
 from os import ismount, exists, mkdir, rename, statvfs
 from binascii import crc32
 
-# Camera485.py (C) 2021 Ott Hydromet, version 2.0 (modified for lower compression, and added maxPictureSize setting)
+# Camera485.py (C) 2021 Ott Hydromet, version 2.1 (modified for lower compression, and added maxPictureSize setting)
 #
 # Purpose:
 #
@@ -407,7 +407,7 @@ def GetPicture(port, t, outputFile):
             for resolution, compression in retrySettings:
                 totalLength = SendSnapshot(port, FormatSnapshot(defaultAddress, resolution, compression),
                                            defaultTries)
-                if totalLength != out_of_memory and totalLength <= maxPictureSize:
+                if totalLength and totalLength != out_of_memory and totalLength <= maxPictureSize:
                     if ran_out:
                         print("Using {} with compression {} due to lack of memory in camera to capture image".format(
                               resolution, compression))
