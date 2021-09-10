@@ -41,7 +41,8 @@ def one_sample(value):
 
     unlock()  # MUST unlock after locking.  otherwise, no other script could ever run
 
-    print("sample: ", value, ", ", ascii_time(utime.localtime()))
+    if sutron_link:
+        print("sample: ", value, ", ", ascii_time(utime.localtime()))
     meas_do_not_log()
     return value
 
@@ -56,7 +57,8 @@ def median_meas(ignored):
 
     median_value = compute_median(sample_list)  # compute the median
 
-    print("sample count: ", len(sample_list), " median: ", median_value, ", ", ascii_time(utime.localtime()))
+    if sutron_link:
+        print("sample count: ", len(sample_list), " median: ", median_value, ", ", ascii_time(utime.localtime()))
 
     sample_list.clear()  # clear the list
 
