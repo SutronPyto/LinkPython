@@ -1,0 +1,90 @@
+Rem	Kaweah No 1 Intake Gage data conversion to Analog Output
+
+Rem This is the basic program version that sends the Shaft encoder data to the H4161
+Rem This is a program for sending data from the XL to several H4161 Analog Converters.
+Rem Gage 201: An H331 Shaft Encoder (SDI01) senses the river level and sends the data to the H350XL
+Rem The data from the 201 H350XL is connected to the gage house at the top of the sandbox by hard-line SDI12 communication.
+
+Rem Gage 201a: An analog 4-20ma signal is sent from the Panametrics DF868 to the H350XL for monitoring the fish release flow
+Rem through the release pipe at the sandbox (ana2)
+Rem (ana2) is processed through (fnt02) to reduce zero cut off errors. (fnt02) outputs the value for (ana2)
+
+Rem Gage 202: An analog 4-20ma signal is sent from the Panametrics DF868 tot he H350XL for monitoring the canal flow below the fish wheel (ana1)
+Rem (ana1) is processed through (fnt01) to reduce zero cut off errors. (fnt01) outputs the value for (ana1)
+
+Rem Air Temp: An H377 temperature probe is located adjacent to the GOES antenna and is connected to the analog input on the H350XL (ana3) output as (fnt03)
+Rem H20 Temp: An H377 temperature probe is located inside the infall box below the fish wheel and is connected to the analog input on the H350XL (ana4) output as (fnt04)
+
+Rem This program scales the Canal AVM Flow, Fish release AVM flow, River Gage Height, Air Temp, and H20 Temp into analog output values for H416's              
+
+Rem set variables and measure values
+
+Rem sdi01 is the H331 Gage Height at the 201 River gage shelter
+DELAY(100)
+measure(sdi01)
+a=sdi01
+DELAY(100)
+
+Rem fnt01 is the output from the Panametrics AVM for canal flow gage no. 202 A function
+Rem is used to prevent errors at zero flow
+Rem the actual input to the H350XL is ana1
+measure(fnt01)
+b=fnt01
+
+Rem fnt02 is the output from the Panametrics AVM for fish release gage no. 201a A function
+Rem is used to prevent errors at zero flow
+Rem the actual input to the H500XL at the block house is ana2
+measure(fnt02)
+c=fnt02
+
+Rem fnt03 is the output from the H377 that measures the outside air temperature
+Rem the actual input to the H350XL is ana3
+measure(fnt03)
+d=fnt03
+
+Rem fnt04 is the output from the H377 that measures the water temperature
+Rem the actual input to the H350XL is ana4
+measure(fnt04)
+e=fnt04
+
+Rem Sacle River(0-16 feet), Canal AVM Flow(0-30 cfs), & Fish Rel AVM Flow (0-20 cfs), Air temp (0-130), and H20 Temp (0-100) into analog 4-20 milliamp scale for each
+Rem of five H416 modules
+
+Rem 201 River ght to analog output (0-16 feet)
+f=a/16*16+4
+
+Rem 202 AVM canal flow to analog output (0-30 cfs)
+g=b/30*16+4
+
+Rem 201a AVM fish release flow to analog output (0-20 cfs)
+h=c/20*16+4
+
+Rem Air Temp to analog output (0-130 deg F)
+i=d/130*16+4
+
+Rem Stilling Well Water Temp to analog output (0-100 deg F)
+j=e/100*16+4
+
+Rem use extended command to set analog output values 
+Rem The sdi12 address of the river (201) H4161 is set to "2"
+Rem The sdi12 address of the Canal AVM (202) H4161 is set to "3"
+Rem The sdi12 address of the Fish Release AVM (201a) H4161 is set to "4"
+Rem The sdi12 address of the Air temp H4161 is set to "5"
+Rem The sdi12 address of the Water Tmep H4161 is set to "6"
+
+Rem delays of 100 milliseconds are used to allow adequate time for writing to the SDI12 bus
+
+PRINTSDI "2XSM",f,"!",
+DELAY(100)
+PRINTSDI "3XSM",g,"!",
+DELAY(100)
+PRINTSDI "4XSM",h,"!",
+DELAY(100)
+PRINTSDI "5XSM",i,"!",
+DELAY(100)
+PRINTSDI "6XSM",j,"!",
+DELAY(100)
+
+Rem Terminate program
+End
+ 
