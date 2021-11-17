@@ -257,7 +257,7 @@ def turbidity_check(turbidity):
     global value_last_meas
 
     # test mode - see test_turbidity
-    if float(setup_read("GP4 value")) >= 1.0:
+    if float(setup_read("GP10 value")) >= 1.0:
         global test_turbidity
         global test_index
         turbidity = test_turbidity[test_index]
