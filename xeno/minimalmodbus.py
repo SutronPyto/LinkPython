@@ -19,7 +19,7 @@
 .. moduleauthor:: Jonas Berg <pyhys@users.sourceforge.net>
 MinimalModbus: A Python driver for the Modbus RTU and Modbus ASCII protocols via serial port (via RS485 or RS232).
 
-Ported for use under the Satlink3 by Sutron Corporation
+Ported for use for Sat/XLink by Sutron Corporation
 
 This code sample has been adapted from open source projects and is unsupported and untested.
 You may experiment with it. If you can get it to work or fix any bugs, please let us know.
@@ -49,7 +49,7 @@ import struct
 import sys
 import utime as time
 
-# helper routines to deal with lack of latin1 character set in MicroPython
+# Sutron Sat/XLink helper routines to deal with lack of latin1 character set in MicroPython
 from sl3 import str_to_bytes, bytes_to_str
 
 if sys.version > '3':
@@ -76,7 +76,7 @@ _LATEST_READ_TIMES = {}
 BAUDRATE = 19200
 """Default value for the baudrate in Baud (int)."""
 
-PARITY   = "N"
+PARITY   = "E"
 """Default value for the parity. See the pySerial module for documentation. Defaults to serial.PARITY_NONE"""
 
 BYTESIZE = 8
@@ -85,10 +85,10 @@ BYTESIZE = 8
 STOPBITS = 1
 """Default value for the number of stopbits (int)."""
 
-TIMEOUT  = 0.05
+TIMEOUT  = 1
 """Default value for the timeout value in seconds (float)."""
 
-CLOSE_PORT_AFTER_EACH_CALL = False
+CLOSE_PORT_AFTER_EACH_CALL = True  # Sutron Sat/XLink needs this as True
 """Default value for port closure setting."""
 
 #####################
@@ -116,8 +116,13 @@ class Instrument():
             self.serial = _SERIALPORTS[port] = serial.Serial(port=port, baudrate=BAUDRATE, parity=PARITY, bytesize=BYTESIZE, stopbits=STOPBITS, timeout=TIMEOUT)
         else:
             self.serial = _SERIALPORTS[port]
-            if self.serial.port is None:
-                self.serial.open()
+
+        if port == "RS485":   # required to work on RS-485 in Sutron Sat/XLink
+            self.serial.rs485 = True
+
+        if not self.serial.is_open:  # modified by Sutron to ensure proper port opening
+            self.serial.open()
+
         """The serial port object as defined by the pySerial module. Created by the constructor.
         Attributes:
             - port (str):      Serial port name.
@@ -798,6 +803,7 @@ class Instrument():
         latest_write_time = time.time()
 
         self.serial.write(request)
+        self.serial.flush()  # Sutron Sat/XLink wait for data to go out to support RS485
 
         # Read and discard local echo
         if self.handle_local_echo:
