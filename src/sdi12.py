@@ -68,7 +68,7 @@ def sdi_collect(address, command="M", sdi_bus="Port1"):
     sensor_reply = sdi_send_command_get_reply(cmd_to_sensor, sdi_bus)
 
     # parse out the returned values
-    parsed = re.match('(\d)(\d\d\d)(\d)', sensor_reply)
+    parsed = re.match('(\\d)(\\d\\d\\d)(\\d)', sensor_reply)
     if parsed is None or int(parsed.group(1)) != address:
         raise Sdi12Error('No reply or bad reply', sensor_reply)
 
@@ -83,7 +83,7 @@ def sdi_collect(address, command="M", sdi_bus="Port1"):
     result = []
 
     # we will use this expression to parse the values form the sensor reply
-    float_match = re.compile('([-+][0-9]*\.?[0-9]+[eE][-+]?[0-9]+)|([-+][0-9]*\.?[0-9]*)')
+    float_match = re.compile('([-+][0-9]*\\.?[0-9]+[eE][-+]?[0-9]+)|([-+][0-9]*\\.?[0-9]*)')
 
     # we need to issue one or more send data commands to the sensor
     data_index = 0
