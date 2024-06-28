@@ -26,7 +26,9 @@ MicroPython
 """
 
 from sl3 import *
-import uos
+
+if sutron_link:
+    import uos
 
 def file_demo():
     """
