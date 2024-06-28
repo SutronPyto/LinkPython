@@ -1,3 +1,5 @@
+# Example: demonstrates how to create 4 byte pseudobinary encoded numbers
+
 def bin6_four(num, count=4, right_digits=0, is_signed=True):
     """
     Converts a number in to a ``count`` byte long 6-bit packed binary string (used for GOES formatting).
