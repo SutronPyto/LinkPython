@@ -57,13 +57,14 @@ and issue the following command from the installation folder::
 
     mosquitto_sub -h test.mosquitto.org -t test/topic
 
-
 How this script creates MQTT messages
 =====================================
 
 1. **``struct.pack``**:
    - This function is used to convert Python values into a bytes object, following a specified format.
-   - Example: ``struct.pack("!H", len(protocol_name))``:
+   
+     Example: ``struct.pack("!H", len(protocol_name))``:
+     
      - ``"!H"`` specifies the format: ``!`` means network byte order (big-endian), and ``H`` means an unsigned short (2 bytes).
      - ``len(protocol_name)`` is the value being packed.
 
