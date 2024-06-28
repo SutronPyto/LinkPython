@@ -10,6 +10,12 @@ implemented with the TCP/IP TXMODE feature. The demo will publish up to
 encryption. Certificates could be used to improve on that, but cannot be
 shared in a demo like this.
 
+If you are using a version of LinkComm which will not let you set the TXMODE
+to Python TCPIP (but are running a version of firmware that supports it) you
+will need to click the "Test Script File..." button and the script will set the
+necessary fields. If you need to change the setup after that, be sure to
+click "Test Script File..." button again.
+
 With the following TX1 setup, this script will transmit measurements to the
 Mosquitto test MQTT server every hour in CSV format::
 
