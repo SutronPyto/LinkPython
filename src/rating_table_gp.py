@@ -12,6 +12,7 @@ The interpolation table is stored in GP Value variables.
 'GP1 Value' and 'GP2 Value' hold the alpha and beta values for the first table entry.
 (GP3, GP4) have the second (alpha, beta) table entry.
 With 32 GP variables available, we can hold up to 16 (alpha, beta) pairs::
+
  table = ((GP1, GP2),
           (GP3, GP4),
           (GP5, GP6),
