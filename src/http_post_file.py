@@ -10,6 +10,12 @@ header information can be generated, in this case the current battery
 voltage. The demo requires a FAT32 formatted SD Card to be inserted in 
 to the X-Link in order to hold the image. 
 
+If you are using a version of LinkComm which will not let you set the TXMODE
+to Python TCPIP (but are running a version of firmware that supports it) you
+will need to click the "Test Script File..." button and the script will set the
+necessary fields. If you need to change the setup after that, be sure to
+click "Test Script File..." button again.
+
 The demo will transmit any files in the /sd/tx1 folder. If you would 
 like to create a fake image to send then run the script task create_image.
 
