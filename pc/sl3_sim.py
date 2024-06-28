@@ -43,6 +43,18 @@ def TXFORMAT(val):
     return val
 
 
+def TXMODE(val):
+    """
+    Return function that was decorated with MODE.
+    This decorator is required for functions used by Satlink for Python TCP/IP functions
+
+    :param function val: function name
+    :return: function name
+    :rtype: function
+    """
+    return val
+
+
 class LogAccessError(Exception):
     pass
 
