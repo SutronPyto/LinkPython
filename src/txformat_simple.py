@@ -57,8 +57,8 @@ def log_read_meas(meas_index_or_label, number_readings):
     :type meas_index_or_label: int or string
     :param number_readings: how many readings to format
     :type number_readings: int
-    :return: readings from the log
-    :rtype: log
+    :return: Reading's from the Log
+    :rtype: Log
     """
 
     # get the meas label so we can search the log for it
