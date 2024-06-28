@@ -498,7 +498,7 @@ def threshold_move(current_turbidity):
 def threshold_sampler(turbidity):
     """This is traditionally hooked into the turbidity measurement.
     If the stage is high enough, check the two most recent readings
-        of this measurement.
+    of this measurement.
     If both cross the relevant threshold, the sampler may be triggered."""
 
     global previous_reading
