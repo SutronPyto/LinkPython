@@ -131,9 +131,12 @@ def send_image_http(socket, message, file_name):
             print(last_results)
             return 0 # do not retry
         
+        path = setup_read("!TX{} Server Path".format(index()))
+        host = setup_read("!TX{} Main Server".format(index()))
+
         headers = [
             'POST /{} HTTP/1.1'.format(path),
-            'Host: httpbin.org',
+            'Host: {}'.format(host),
             'Content-Type: image/jpeg',
             'Content-Length: {}'.format(file_size),
             'File-Name: {}'.format(file_name),
