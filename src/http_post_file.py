@@ -170,7 +170,7 @@ def send_image_http(socket, message, file_name):
 
         headers = [
             'POST /{} HTTP/1.1'.format(path),
-            'Host: httpbin.org',
+            'Host: {}'.format(host),
             'Content-Type: multipart/form-data; boundary={}'.format(boundary),
             'Content-Length: {}'.format(content_length),
             ]
