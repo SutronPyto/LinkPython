@@ -84,5 +84,5 @@ def change_setup_field():
     value = get_value_for_date(month, day)
 
     # change a setup field with the value
-    setup_write("GP1 Value", value)
-    #setup_write("M1 Alarm Threshold", value)
+    #setup_write("GP1 Value", value)
+    setup_write("M1 ALARM 1 THRESHOLD", value)
