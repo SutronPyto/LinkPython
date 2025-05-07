@@ -46,7 +46,7 @@ def format_all_active_meas():
     first = True
 
     # loop through all the measurements, looking for active ones
-    for m in range(1, 32 + 1):
+    for m in range(1, 48 + 1):
         if "On" in setup_read("M{} Active".format(m)):
             # found an active measurement
             r = measure(m, READING_LAST)

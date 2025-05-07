@@ -112,7 +112,7 @@ def tx_format_a1(standard):
     meas_active = 0
 
     # format all the  measurement readings
-    for meas_index in range(1, 33):
+    for meas_index in range(1, 48+1):
 
         # is this measurement active?
         if "ON" in setup_read("M{} Active".format(meas_index)).upper():
